@@ -1,19 +1,19 @@
 # GUI Library для численного моделирования
 
-Простая графическая библиотека на C++ для школьников, изучающих численное моделирование. Использует ImGui и ImPlot для создания интерактивных графиков и параметров.
+Простая графическая библиотека на C++ для школьников, изучающих численное моделирование. Использует ImGui (ветка `docking`) и ImPlot для создания интерактивных графиков и параметров. Сборка осуществляется без vcpkg — через git submodules.
 
 ## Особенности
 
-- **Простой API** - минимум ООП, максимум функций
+- **Простой API** — минимум ООП, максимум функций
 - **Лямбда-функции** для расчетов
-- **Докируемые окна** - левая панель с параметрами, правая с графиками
-- **Реальное время** - обновление графиков в реальном времени
-- **Простота использования** - идеально для школьников
+- **Докируемые окна** — левая панель с параметрами, правая с графиками
+- **Реальное время** — обновление графиков в реальном времени
+- **Простота использования** — идеально для школьников
 
 ## Структура проекта
 
 ```
-GUI_Library/
+GuiLibrary/
 ├── CMakeLists.txt          # Основной файл сборки
 ├── include/
 │   └── gui_library.h       # Заголовочный файл библиотеки
@@ -21,34 +21,110 @@ GUI_Library/
 │   └── gui_library.cpp     # Реализация библиотеки
 ├── examples/
 │   ├── simple_example.cpp  # Простой пример (синусоида)
-│   └── animation_example.cpp # Пример с анимацией
-├── external/               # Внешние библиотеки (ImGui, ImPlot)
+│   ├── animation_example.cpp # Пример с анимацией
+│   ├── school_example.cpp  # Пример для школьников
+│   └── docking_test.cpp    # Тест докинга
+├── external/
+│   ├── glfw/               # Сабмодуль GLFW
+│   ├── imgui/              # Сабмодуль ImGui (ветка docking)
+│   └── implot/             # Сабмодуль ImPlot
 └── resources/              # Ресурсы
 ```
 
-## Быстрый старт
+## Быстрый старт (Windows 10/11, Visual Studio 2022)
 
-### 1. Установка зависимостей
+### 1) Требования
 
-Для Windows с vcpkg:
-```bash
-vcpkg install glfw3 imgui implot
+- Visual Studio 2022 (рабочая нагрузка «Разработка классических приложений на C++»)
+- CMake 3.16+
+- Git
+
+Проверьте, что инструменты доступны в PATH:
+
+```powershell
+cmake --version
+git --version
 ```
 
-### 2. Сборка проекта
+### 2) Клонирование репозитория
 
-```bash
-mkdir build
-cd build
-cmake ..
-cmake --build .
+```powershell
+cd C:\GitHub
+git clone <URL_ВАШЕГО_РЕПОЗИТОРИЯ> GuiLibrary
+cd GuiLibrary
 ```
 
-### 3. Запуск примера
+### 3) Инициализация сабмодулей (без vcpkg)
 
-```bash
-./example
+Проект использует сабмодули `GLFW`, `ImGui`, `ImPlot`. Для `ImGui` автоматически используется ветка `docking` (зафиксировано в `.gitmodules`). Выполните:
+
+```powershell
+# Синхронизация настроек сабмодулей (на случай изменений)
+git submodule sync --recursive
+
+# Инициализация и обновление сабмодулей согласно .gitmodules
+git submodule update --init --recursive
+
+# Явная установка ветки docking для ImGui и получение последних изменений
+git -C external/imgui fetch origin docking
+git -C external/imgui checkout docking
+git -C external/imgui pull --ff-only origin docking
 ```
+
+Проверить активную ветку ImGui:
+
+```powershell
+git -C external/imgui status
+```
+
+Ожидаемо: `On branch docking`.
+
+### 4) Конфигурация CMake (Visual Studio 2022, x64)
+
+```powershell
+cmake -B build -S . -G "Visual Studio 17 2022" -A x64
+```
+
+Если CMake нашёл OpenGL (`opengl32`) и добавил цели `glfw`, `imgui`, `implot`, конфигурация прошла успешно.
+
+### 5) Сборка
+
+```powershell
+cmake --build build --config Release
+```
+
+После сборки исполняемые файлы появятся в `build\Release\`.
+
+### 6) Запуск примеров
+
+```powershell
+.\n+build\Release\simple_example.exe
+build\Release\animation_example.exe
+build\Release\school_example.exe
+build\Release\docking_test.exe
+```
+
+## Требования
+
+- C++17
+- CMake 3.16+
+- OpenGL 3.3+
+- GLFW (сабмодуль)
+- ImGui (ветка `docking`, сабмодуль)
+- ImPlot (сабмодуль)
+
+## Устранение проблем
+
+- «CMake не видит OpenGL»: убедитесь, что система — Windows 10/11; обычно находится как `opengl32` автоматически.
+- «Сабмодули пустые или не скачались»: повторите команды инициализации:
+  ```powershell
+  git submodule sync --recursive
+  git submodule update --init --recursive
+  git -C external/imgui fetch origin docking
+  git -C external/imgui checkout docking
+  git -C external/imgui pull --ff-only origin docking
+  ```
+- «Ошибки линковки GLFW/ImGui»: убедитесь, что `external/glfw`, `external/imgui`, `external/implot` содержат исходники, а CMake конфигурация прошла без ошибок.
 
 ## API библиотеки
 
@@ -217,15 +293,6 @@ shutdown_gui_library();
    ```cpp
    set_calculation_function(my_calc);
    ```
-
-## Требования
-
-- C++17
-- CMake 3.16+
-- OpenGL 3.3+
-- GLFW3
-- ImGui
-- ImPlot
 
 ## Лицензия
 

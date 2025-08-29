@@ -4,8 +4,38 @@
 #include <vector>
 #include <functional>
 #include <memory>
+#include <deque>
 
 // Простой API для школьников - никаких классов, только функции и лямбды
+
+class DataBuffer {
+public:
+    std::vector<float> x;   // массив X (время в пределах окна)
+    std::vector<float> y;   // массив значений функции
+    size_t maxSize;         // число точек в буфере
+    size_t head;            // текущая позиция для записи
+    float window;           // ширина окна по X
+
+
+    DataBuffer(float windowWidth, size_t points = 200, float x_0 = 0.0f, float y_0 = 0.0f)
+        : maxSize(points), head(0), window(windowWidth)
+    {
+        x.resize(points, x_0);
+        y.resize(points, y_0);
+    }
+
+    void addPoint(float t, float value) {
+        head = (head + 1) % maxSize;
+        // отображаем время в окно [0, window)
+        float t_window = fmod(t, window);
+
+        x[head] = t_window;
+        y[head] = value;
+    }
+
+    std::vector<float> getX() const { return x; }
+    std::vector<float> getY() const { return y; }
+};
 
 // Типы параметров
 enum class ParamType {
@@ -21,6 +51,7 @@ struct PlotData {
     std::vector<float> y_values;
     std::string label;
     bool visible = true;
+    size_t step;
 };
 
 // Структура для параметра
@@ -37,6 +68,7 @@ struct Parameter {
     float min_value = 0.0f;
     float max_value = 100.0f;
     float step = 1.0f;
+    bool use_slider = false;
 };
 
 // Глобальные функции для работы с GUI
@@ -54,11 +86,11 @@ void shutdown_gui_library();
 
 // Добавить параметр типа float
 void add_float_param(const std::string& name, const std::string& label, 
-                    float initial_value = 0.0f, float min = 0.0f, float max = 100.0f, float step = 1.0f);
+                    float initial_value = 0.0f, float min = 0.0f, float max = 100.0f, float step = 1.0f, bool use_slider = false);
 
 // Добавить параметр типа int
 void add_int_param(const std::string& name, const std::string& label, 
-                  int initial_value = 0, int min = 0, int max = 100, int step = 1);
+                  int initial_value = 0, int min = 0, int max = 100, int step = 1, bool use_slider = false);
 
 // Добавить параметр типа bool
 void add_bool_param(const std::string& name, const std::string& label, bool initial_value = false);
@@ -70,7 +102,7 @@ void add_string_param(const std::string& name, const std::string& label, const s
 float get_float_param(const std::string& name);
 int get_int_param(const std::string& name);
 bool get_bool_param(const std::string& name);
-std::string get_string_param(const std::string& name);
+std::string get_string_param(const std::string& name);  
 
 // === ФУНКЦИИ ДЛЯ РАБОТЫ С ГРАФИКАМИ ===
 
@@ -78,8 +110,8 @@ std::string get_string_param(const std::string& name);
 void create_plot(const std::string& name, const std::string& title = "");
 
 // Добавить данные на график
-void add_plot_data(const std::string& plot_name, const std::vector<float>& x, const std::vector<float>& y, 
-                  const std::string& label = "Данные");
+void add_plot_data(const std::string& plot_name, const std::vector<float>& x, const std::vector<float>& y,
+                  const std::string& label = "Данные", const size_t step = 0);
 
 // Очистить график
 void clear_plot(const std::string& plot_name);

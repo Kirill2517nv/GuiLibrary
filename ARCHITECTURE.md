@@ -220,7 +220,7 @@ TEST_CASE("Parameter creation") {
 ### Уровни документации:
 1. **README.md** - общее описание
 2. **SCHOOL_GUIDE.md** - для школьников
-3. **BUILD_INSTRUCTIONS.md** - инструкции по сборке
+3. **BUILD_GUIDE.md** - подробная инструкция по сборке
 4. **ARCHITECTURE.md** - архитектурные решения
 5. **Примеры кода** - в папке examples
 

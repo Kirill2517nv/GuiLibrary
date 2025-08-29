@@ -4,7 +4,7 @@
 
 ### 1. Запустите пример
 ```bash
-# Соберите проект (см. BUILD_INSTRUCTIONS.md)
+# Соберите проект (см. BUILD_GUIDE.md)
 # Запустите пример для школьников
 ./school_example.exe
 ```

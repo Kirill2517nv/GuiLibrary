@@ -9,7 +9,8 @@
 #include <thread>
 #include <iostream>
 
-// Глобальные переменные для хранения состояния
+
+// Глобальные переменные для хранения состояниякак изменить 
 static GLFWwindow* g_window = nullptr;
 static std::map<std::string, Parameter> g_parameters;
 static std::map<std::string, std::vector<PlotData>> g_plots;
@@ -108,12 +109,22 @@ bool gui_main_loop() {
         
         switch (param.type) {
             case ParamType::Float:
-                ImGui::SliderFloat(param.label.c_str(), &param.float_value, 
-                                 param.min_value, param.max_value, "%.3f", param.step);
+                if (param.use_slider) {
+                    ImGui::SliderFloat(param.label.c_str(), &param.float_value, 
+                                param.min_value, param.max_value, "%.3f", param.step);
+                } 
+                else {
+                    ImGui::InputFloat(param.label.c_str(), &param.float_value, param.step);
+                }
                 break;
             case ParamType::Int:
-                ImGui::SliderInt(param.label.c_str(), &param.int_value, 
-                               (int)param.min_value, (int)param.max_value, "%d");
+                if (param.use_slider) {
+                    ImGui::SliderInt(param.label.c_str(), &param.int_value, 
+                                (int)param.min_value, (int)param.max_value, "%d");
+                } 
+                else {
+                    ImGui::InputInt(param.label.c_str(), &param.int_value);
+                }
                 break;
             case ParamType::Bool:
                 ImGui::Checkbox(param.label.c_str(), &param.bool_value);
@@ -125,6 +136,7 @@ bool gui_main_loop() {
                     param.string_value = buffer;
                 }
                 break;
+
         }
         
         ImGui::PopID();
@@ -135,21 +147,130 @@ bool gui_main_loop() {
     // Правая панель с графиками
     for (auto& [plot_name, plot_data_vector] : g_plots) {
         ImGui::Begin(plot_name.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+
+        if (plot_name == "Sin") {
+            ImPlot::SetNextAxesLimits(0.0, 27.0, -1.2, 1.2, ImGuiCond_FirstUseEver);
+            if (ImPlot::BeginPlot(plot_name.c_str())) {
+            
+                for (auto& plot_data : plot_data_vector) {
+                    if (plot_data.visible && !plot_data.x_values.empty()) {
         
-        if (ImPlot::BeginPlot(plot_name.c_str())) {
-            for (auto& plot_data : plot_data_vector) {
-                if (plot_data.visible && !plot_data.x_values.empty()) {
-                    ImPlot::PlotLine(plot_data.label.c_str(), 
-                                   plot_data.x_values.data(), 
-                                   plot_data.y_values.data(), 
-                                   plot_data.x_values.size());
+                            ImPlot::PlotScatter(plot_data.label.c_str(), 
+                                        plot_data.x_values.data(), 
+                                        plot_data.y_values.data(), 
+                                        plot_data.x_values.size());
+                    }
                 }
+                ImPlot::EndPlot();
             }
-            ImPlot::EndPlot();
         }
+
+        else if (plot_name == "Маятник") {
+            ImPlot::SetNextAxesLimits(-1.5, 1.5, -1.5, 1.5, ImGuiCond_FirstUseEver);
+            if (ImPlot::BeginPlot(plot_name.c_str(), ImVec2(300, 300))) {
+            
+                for (auto& plot_data : plot_data_vector) {
+                    if (plot_data.visible && !plot_data.x_values.empty()) {
         
+                        ImPlot::PlotLine(plot_data.label.c_str(), 
+                                    plot_data.x_values.data(), 
+                                    plot_data.y_values.data(), 
+                                    plot_data.x_values.size());
+
+                        if (!plot_data.x_values.empty()) {
+                            double x = plot_data.x_values.back();  
+                            double y = plot_data.y_values.back(); 
+                            ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle, 6.0f, ImVec4(1,0,0,1), IMPLOT_AUTO, ImVec4(1,0,0,1));
+                            ImPlot::PlotScatter("##end_marker", &x, &y, 1);
+                        }
+                    }
+                }
+                ImPlot::EndPlot();
+            }
+        }
+
+        else if (plot_name == "Фазовая диаграмма") {
+            ImPlot::SetNextAxesLimits(-3., 3., -3., 3., ImGuiCond_FirstUseEver);
+            if (ImPlot::BeginPlot(plot_name.c_str(), ImVec2(300, 300))) {
+            
+                for (auto& plot_data : plot_data_vector) {
+                    if (plot_data.visible && !plot_data.x_values.empty()) {
+
+                        for (size_t i = 0; i < plot_data.x_values.size(); ++i) {
+                            double x = plot_data.x_values[i];
+                            double y = plot_data.y_values[i];
+
+                            if (i == plot_data.step)
+                            {
+                                ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle, 6.0f, 
+                                                    ImVec4(1,0,0,1),  // красная заливка
+                                                    IMPLOT_AUTO, 
+                                                    ImVec4(1,0,0,1)); // чёрная обводка
+                                ImPlot::PlotScatter(("##pt_" + std::to_string(i)).c_str(), &x, &y, 1);
+                            }
+
+                            else
+                            {
+                                ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle, 0.0f, 
+                                                    ImVec4(0,0,1,1),  // синяя заливка
+                                                    IMPLOT_AUTO, 
+                                                    ImVec4(0,0,1,1)); 
+                                ImPlot::PlotScatter(("##pt_" + std::to_string(i)).c_str(), &x, &y, 1);
+                            }
+                            
+                        }                       
+                    }
+                }
+                ImPlot::EndPlot();
+            }   
+        }
+
+        else if (plot_name == "Движение планеты") {
+            ImPlot::SetNextAxesLimits(-3., 3., -3., 3., ImGuiCond_FirstUseEver);
+            if (ImPlot::BeginPlot(plot_name.c_str(), ImVec2(700, 700))) {
+                int x =0;
+                int y =0;
+                ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle, 15.0f, 
+                                                    ImVec4(1,1,0,1),  // красная заливка
+                                                    IMPLOT_AUTO, 
+                                                    ImVec4(0,0,0,0)); // чёрная обводка
+                ImPlot::PlotScatter("SUN", &x, &y, 1);
+
+
+                for (auto& plot_data : plot_data_vector) {
+                    if (plot_data.visible && !plot_data.x_values.empty()) {
+                        for (size_t i = 0; i < plot_data.x_values.size(); ++i) {
+                            double x = plot_data.x_values[i];
+                            double y = plot_data.y_values[i];
+
+                            if (i == plot_data.step)
+                            {
+                                ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle, 15.0f, 
+                                                    ImVec4(1,0,0,1),  // красная заливка
+                                                    IMPLOT_AUTO, 
+                                                    ImVec4(0,0,0,0)); // чёрная обводка
+                                ImPlot::PlotScatter(("##pt_" + std::to_string(i)).c_str(), &x, &y, 1);
+                            }
+
+                            else
+                            {
+                                ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle, 5.0f, 
+                                                    ImVec4(0,0,1,1),  // синяя заливка
+                                                    IMPLOT_AUTO, 
+                                                    ImVec4(0,0,0,0)); 
+                                ImPlot::PlotScatter(("##pt_" + std::to_string(i)).c_str(), &x, &y, 1);
+                            }
+                            
+                        }
+                    }
+                }
+            ImPlot::EndPlot();
+            }
+        }
+    
         ImGui::End();
     }
+
 
     // Выполняем функцию расчета если она установлена
     if (g_calculation_function) {
@@ -196,7 +317,7 @@ void shutdown_gui_library() {
 // === ФУНКЦИИ ДЛЯ РАБОТЫ С ПАРАМЕТРАМИ ===
 
 void add_float_param(const std::string& name, const std::string& label, 
-                    float initial_value, float min, float max, float step) {
+                    float initial_value, float min, float max , float step , bool use_slider) {
     Parameter param;
     param.name = name;
     param.label = label;
@@ -205,11 +326,12 @@ void add_float_param(const std::string& name, const std::string& label,
     param.min_value = min;
     param.max_value = max;
     param.step = step;
+    param.use_slider = use_slider;
     g_parameters[name] = param;
 }
 
 void add_int_param(const std::string& name, const std::string& label, 
-                  int initial_value, int min, int max, int step) {
+                  int initial_value, int min, int max, int step , bool use_slider) {
     Parameter param;
     param.name = name;
     param.label = label;
@@ -218,6 +340,7 @@ void add_int_param(const std::string& name, const std::string& label,
     param.min_value = (float)min;
     param.max_value = (float)max;
     param.step = (float)step;
+    param.use_slider = use_slider;
     g_parameters[name] = param;
 }
 
@@ -278,13 +401,14 @@ void create_plot(const std::string& name, const std::string& title) {
 }
 
 void add_plot_data(const std::string& plot_name, const std::vector<float>& x, 
-                  const std::vector<float>& y, const std::string& label) {
+                  const std::vector<float>& y, const std::string& label, const size_t step) {
     auto it = g_plots.find(plot_name);
     if (it != g_plots.end()) {
         PlotData data;
         data.x_values = x;
         data.y_values = y;
         data.label = label;
+        data.step = step;
         it->second.push_back(data);
     }
 }

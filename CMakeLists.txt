@@ -9,20 +9,11 @@ if(WIN32)
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 
-# Настройка vcpkg toolchain
-if(DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
-    set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
-        CACHE STRING "")
-endif()
-
 # Поиск пакетов
 find_package(OpenGL REQUIRED)
 
-# Путь к GLFW из vcpkg
-set(GLFW_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/include")
-set(GLFW_LIBRARY_DIR "${CMAKE_SOURCE_DIR}/vcpkg/installed/x64-windows/lib")
-
-# Включаем ImGui и ImPlot
+# Включаем внешние библиотеки как submodules
+add_subdirectory(external/glfw)
 add_subdirectory(external/imgui)
 add_subdirectory(external/implot)
 
@@ -34,17 +25,17 @@ add_library(gui_library
 # Подключаем заголовочные файлы
 target_include_directories(gui_library PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/imgui
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/imgui/backends
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/implot/implot
-    ${GLFW_INCLUDE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/backends
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/implot
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/glfw/include
 )
 
 # Линкуем библиотеки
 target_link_libraries(gui_library
     imgui
     implot
-    ${GLFW_LIBRARY_DIR}/glfw3dll.lib
+    glfw
     OpenGL::GL
 )
 
@@ -69,11 +60,16 @@ add_executable(docking_test
 )
 target_link_libraries(docking_test gui_library)
 
-# Копируем шейдеры и ресурсы (если понадобятся)
-if(WIN32)
+# Копируем ресурсы (только для simple_example, если папка существует)
+if(WIN32 AND EXISTS "${CMAKE_SOURCE_DIR}/resources")
     add_custom_command(TARGET simple_example POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_SOURCE_DIR}/resources
         $<TARGET_FILE_DIR:simple_example>/resources
     )
 endif()
+
+# Подключаем задания Task_1..Task_3
+add_subdirectory(Task_1)
+add_subdirectory(Task_2)
+add_subdirectory(Task_3)
