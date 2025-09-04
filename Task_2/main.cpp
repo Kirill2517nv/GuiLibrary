@@ -30,12 +30,12 @@ void click_button() {
     t = 0;
     alpha = 0;
     v = get_float_param("Скорость");
-    set_bool_param("pause", true);
+    set_bool_param("Пауза", true);
     buffer.clear(alpha, v);
 }
 
 void calculation_function() {
-    pause = get_bool_param("pause");
+    pause = get_bool_param("Пауза");
 
     if (pause)
         return;
@@ -83,10 +83,10 @@ void calculation_function() {
 int main() {
     if (!init_gui_library("Task_2: Движение маятника", widhtWindow, hieghtWindow)) return -1;
 
-    add_float_param("Скорость", "Скорость", v);
+    add_float_param("Скорость", v);
 
-    add_bool_param("pause", "Пауза", false);
-    add_button_param("Restart", "Рестарт", click_button);
+    add_bool_param("Пауза", false);
+    add_button_param("Рестарт", click_button);
 
     create_plot("Маятник", scale);
     create_plot("Фазовая диаграмма", scale);

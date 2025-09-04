@@ -73,35 +73,6 @@ target_link_libraries(gui_library
     OpenGL::GL
 )
 
-# Создаем исполняемые файлы с примерами
-add_executable(simple_example
-    examples/simple_example.cpp
-)
-target_link_libraries(simple_example gui_library)
-
-add_executable(animation_example
-    examples/animation_example.cpp
-)
-target_link_libraries(animation_example gui_library)
-
-add_executable(school_example
-    examples/school_example.cpp
-)
-target_link_libraries(school_example gui_library)
-
-add_executable(docking_test
-    examples/docking_test.cpp
-)
-target_link_libraries(docking_test gui_library)
-
-# Копируем ресурсы (только для simple_example, если папка существует)
-if(WIN32 AND EXISTS "${CMAKE_SOURCE_DIR}/resources")
-    add_custom_command(TARGET simple_example POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_SOURCE_DIR}/resources
-        $<TARGET_FILE_DIR:simple_example>/resources
-    )
-endif()
 
 # Подключаем задания Task_0..Task_3
 add_subdirectory(Task_0)
