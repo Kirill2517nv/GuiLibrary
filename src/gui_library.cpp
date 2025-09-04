@@ -13,6 +13,7 @@
 // Глобальные переменные для хранения состояниякак изменить 
 static GLFWwindow* g_window = nullptr;
 static std::map<std::string, Parameter> g_parameters;
+static std::vector<std::string> g_DrawOrder;
 static std::map<std::string, PlotData> g_plots;
 static std::function<void()> g_calculation_function = nullptr;
 static bool g_should_close = false;
@@ -67,12 +68,12 @@ bool init_gui_library(const std::string& window_title, const int widthWindow, co
     ImFont* font = nullptr;
     
     // Попробуем загрузить шрифт из системы Windows
-    font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/arial.ttf", 16.0f);
+    font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/arial.ttf", 24.0f);
     if (!font) {
-        font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/segoeui.ttf", 16.0f);
+        font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/segoeui.ttf", 24.0f);
     }
     if (!font) {
-        font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/calibri.ttf", 16.0f);
+        font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/calibri.ttf", 24.0f);
     }
     if (!font) {
         // Если не удалось загрузить системный шрифт, используем встроенный
@@ -109,14 +110,15 @@ bool gui_main_loop() {
         g_calculation_function();
     }
 
-    for (auto& [name, param] : g_parameters) {
+    for (auto& name : g_DrawOrder) {
         ImGui::PushID(name.c_str());
         ImGui::SetNextItemWidth(150.f);
+        Parameter& param = g_parameters[name];
         switch (param.type) {
             case ParamType::Float:
                 if (param.use_slider) {
                     ImGui::SliderFloat(param.label.c_str(), &param.float_value, 
-                                param.min_value, param.max_value, "%.3f", param.step);
+                                param.min_value, param.max_value, "%.3f");
                 } 
                 else {
                     ImGui::InputFloat(param.label.c_str(), &param.float_value, param.step);
@@ -142,7 +144,7 @@ bool gui_main_loop() {
                 }
                 break;
             case ParamType::Button:
-                if (ImGui::Button(param.label.c_str(), ImVec2(200, 50))) {
+                if (ImGui::Button(param.label.c_str(), ImVec2(250, 50))) {
                     param.function();
                 }
                 break;
@@ -159,6 +161,7 @@ bool gui_main_loop() {
         ImPlot::SetNextAxesLimits(plot_data.scale.x_min, plot_data.scale.x_max, plot_data.scale.y_min, plot_data.scale.y_max, ImGuiCond_FirstUseEver);
         if (ImPlot::BeginPlot(plot_name.c_str(), ImVec2(plot_data.scale.width, plot_data.scale.height))) {
             for (auto& line_data : plot_data.lineVector) {
+                    ImPlot::SetNextLineStyle(BLUE, 10.0f);
                     ImPlot::PlotLine(line_data.label.c_str(), 
                                         line_data.x_values.data(), 
                                         line_data.y_values.data(), 
@@ -167,7 +170,7 @@ bool gui_main_loop() {
                     if (!line_data.x_values.empty()) {
                         double x = line_data.x_values.back();  
                         double y = line_data.y_values.back(); 
-                        ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle, 6.0f, ImVec4(1,0,0,1), IMPLOT_AUTO, ImVec4(1,0,0,1));
+                        ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle, 12.0f, ImVec4(1,0,0,1), IMPLOT_AUTO, ImVec4(1,0,0,1));
                         ImPlot::PlotScatter("##end_marker", &x, &y, 1);
                     }
             }
@@ -199,11 +202,11 @@ bool gui_main_loop() {
         }
         ImGui::SetNextItemWidth(150.f);
         ImGui::SliderInt("Ширина", &plot_data.scale.width, 
-                                100, 1000, "%d", 10);
+                                100, 1000, "%d");
         ImGui::SameLine();
         ImGui::SetNextItemWidth(150.f);
         ImGui::SliderInt("Высота", &plot_data.scale.height, 
-                                100, 1000, "%d", 10);
+                                100, 1000, "%d");
                                 
         ImGui::End();
     }
@@ -260,7 +263,9 @@ void add_float_param(const std::string& name,
     param.step = step;
     param.use_slider = use_slider;
     g_parameters[name] = param;
+    g_DrawOrder.push_back(name);
 }
+
 
 void add_int_param(const std::string& name, 
                   int initial_value, int min, int max, int step , bool use_slider) {
@@ -274,6 +279,7 @@ void add_int_param(const std::string& name,
     param.step = (float)step;
     param.use_slider = use_slider;
     g_parameters[name] = param;
+    g_DrawOrder.push_back(name);
 }
 
 void add_bool_param(const std::string& name, bool initial_value) {
@@ -283,6 +289,7 @@ void add_bool_param(const std::string& name, bool initial_value) {
     param.type = ParamType::Bool;
     param.bool_value = initial_value;
     g_parameters[name] = param;
+    g_DrawOrder.push_back(name);
 }
 
 void add_string_param(const std::string& name, const std::string& initial_value) {
@@ -292,6 +299,7 @@ void add_string_param(const std::string& name, const std::string& initial_value)
     param.type = ParamType::String;
     param.string_value = initial_value;
     g_parameters[name] = param;
+    g_DrawOrder.push_back(name);
 }
 
 void add_button_param(const std::string& name, std::function<void()> function) {
@@ -301,6 +309,7 @@ void add_button_param(const std::string& name, std::function<void()> function) {
     param.type = ParamType::Button;
     param.function = function;
     g_parameters[name] = param;
+    g_DrawOrder.push_back(name);
 }
 
 float get_float_param(const std::string& name) {
@@ -400,18 +409,10 @@ void add_plot_line(const std::string& plot_name, const std::vector<float>& x, co
 void clear_plot(const std::string& plot_name) {
     auto it = g_plots.find(plot_name);
     if (it != g_plots.end()) {
-        it->second.scatterVector.clear();
-        it->second.scatterlineVector.clear();
-        it->second.lineVector.clear();
-    }
-}
-
-void clear_data(const std::string& plot_name) {
-    auto it = g_plots.find(plot_name);
-    if (it != g_plots.end()) {
         it->second.clear();
     }
 }
+
 
 // === ФУНКЦИИ ДЛЯ РАСЧЕТОВ ===
 

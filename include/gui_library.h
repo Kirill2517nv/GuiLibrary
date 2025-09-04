@@ -136,13 +136,11 @@ struct PlotData {
 
     void clear() {
         for (auto& s : scatterVector) s.clear();
-        scatterVector.clear();
 
         for (auto& sl : scatterlineVector) sl.clear();
-        scatterlineVector.clear();
 
         for (auto& l : lineVector) l.clear();
-        lineVector.clear();
+
     }
 };
 
@@ -220,7 +218,6 @@ void add_plot_line(const std::string& plot_name, const std::vector<float>& x, co
 
 // Очистить график
 void clear_plot(const std::string& plot_name);
-void clear_data(const std::string& plot_name);
 
 // === ФУНКЦИИ ДЛЯ РАСЧЕТОВ ===
 

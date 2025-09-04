@@ -32,7 +32,7 @@ void click_button() {
     set_bool_param("Пауза", true);
 
     // обновление значений
-    t = 0; x = 0; y = 0; dt = 0.01f;
+    t = 0; x = 0; y = 0; 
 
     // очистка буфера
     buffer.clear(x, y);
@@ -41,6 +41,7 @@ void click_button() {
 void calculation_function(){
     bool pause = get_bool_param("Пауза");
     
+    dt = get_float_param("dt");
     // если pause = true, то программа ставится на паузу
     if (pause)
         return;
@@ -64,7 +65,7 @@ void calculation_function(){
     std::vector<float> Y = buffer.getY();
 
     // условие попадания в мишень
-    if ((x >= target_x[0] && (y >= target_y[0] && y <= target_y[1]))) {
+    if (((x >= target_x[0] && x <= target_x[0] + 2 * V * cos(alpha * M_PI / 180.) * dt) && (y >= target_y[0] && y <= target_y[1]))) {
         set_bool_param("Пауза", true);
         dt = 0;
         //std::cout << "Попадание!" << std::endl;
@@ -86,12 +87,13 @@ void calculation_function(){
 int main() {
     if (!init_gui_library("Task_0: Движение под углом", widhtWindow, hieghtWindow)) return -1;
     setlocale(LC_ALL, "Russian");
-
-    add_float_param("Скорость", V);
-    add_float_param("Угол", alpha);
+   
 
     add_bool_param("Пауза", false);
     add_button_param("Переинициализация", click_button);
+    add_float_param("Скорость", V);
+    add_float_param("Угол", alpha);
+    add_float_param("dt", dt);
 
     create_plot("Движение под углом", scale);
 
