@@ -103,7 +103,8 @@ if(WIN32 AND EXISTS "${CMAKE_SOURCE_DIR}/resources")
     )
 endif()
 
-# Подключаем задания Task_1..Task_3
+# Подключаем задания Task_0..Task_3
+add_subdirectory(Task_0)
 add_subdirectory(Task_1)
 add_subdirectory(Task_2)
 add_subdirectory(Task_3)

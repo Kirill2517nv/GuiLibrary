@@ -13,14 +13,14 @@
 // Глобальные переменные для хранения состояниякак изменить 
 static GLFWwindow* g_window = nullptr;
 static std::map<std::string, Parameter> g_parameters;
-static std::map<std::string, std::vector<PlotData>> g_plots;
+static std::map<std::string, PlotData> g_plots;
 static std::function<void()> g_calculation_function = nullptr;
 static bool g_should_close = false;
 static std::chrono::high_resolution_clock::time_point g_start_time;
 static ImGuiID g_dockspace_id = 0;
 
 // Инициализация библиотеки
-bool init_gui_library(const std::string& window_title) {
+bool init_gui_library(const std::string& window_title, const int widthWindow, const int heightWindow) {
     // Инициализация GLFW
     if (!glfwInit()) {
         std::cerr << "Ошибка инициализации GLFW" << std::endl;
@@ -33,7 +33,7 @@ bool init_gui_library(const std::string& window_title) {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     // Создание окна
-    g_window = glfwCreateWindow(1200, 800, window_title.c_str(), nullptr, nullptr);
+    g_window = glfwCreateWindow(widthWindow, heightWindow, window_title.c_str(), nullptr, nullptr);
     if (!g_window) {
         std::cerr << "Ошибка создания окна GLFW" << std::endl;
         glfwTerminate();
@@ -104,9 +104,14 @@ bool gui_main_loop() {
     // Левая панель с параметрами
     ImGui::Begin("Параметры", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
     
+       // Выполняем функцию расчета если она установлена
+    if (g_calculation_function) {
+        g_calculation_function();
+    }
+
     for (auto& [name, param] : g_parameters) {
         ImGui::PushID(name.c_str());
-        
+        ImGui::SetNextItemWidth(150.f);
         switch (param.type) {
             case ParamType::Float:
                 if (param.use_slider) {
@@ -136,146 +141,73 @@ bool gui_main_loop() {
                     param.string_value = buffer;
                 }
                 break;
+            case ParamType::Button:
+                if (ImGui::Button(param.label.c_str(), ImVec2(200, 50))) {
+                    param.function();
+                }
+                break;
 
-        }
-        
+        } 
         ImGui::PopID();
     }
     
     ImGui::End();
 
-    // Правая панель с графиками
-    for (auto& [plot_name, plot_data_vector] : g_plots) {
+
+    for (auto& [plot_name, plot_data] : g_plots) {
         ImGui::Begin(plot_name.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize);
-
-        if (plot_name == "Sin") {
-            ImPlot::SetNextAxesLimits(0.0, 27.0, -1.2, 1.2, ImGuiCond_FirstUseEver);
-            if (ImPlot::BeginPlot(plot_name.c_str())) {
-            
-                for (auto& plot_data : plot_data_vector) {
-                    if (plot_data.visible && !plot_data.x_values.empty()) {
-        
-                            ImPlot::PlotScatter(plot_data.label.c_str(), 
-                                        plot_data.x_values.data(), 
-                                        plot_data.y_values.data(), 
-                                        plot_data.x_values.size());
+        ImPlot::SetNextAxesLimits(plot_data.scale.x_min, plot_data.scale.x_max, plot_data.scale.y_min, plot_data.scale.y_max, ImGuiCond_FirstUseEver);
+        if (ImPlot::BeginPlot(plot_name.c_str(), ImVec2(plot_data.scale.width, plot_data.scale.height))) {
+            for (auto& line_data : plot_data.lineVector) {
+                    ImPlot::PlotLine(line_data.label.c_str(), 
+                                        line_data.x_values.data(), 
+                                        line_data.y_values.data(), 
+                                        line_data.x_values.size());
+                                        
+                    if (!line_data.x_values.empty()) {
+                        double x = line_data.x_values.back();  
+                        double y = line_data.y_values.back(); 
+                        ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle, 6.0f, ImVec4(1,0,0,1), IMPLOT_AUTO, ImVec4(1,0,0,1));
+                        ImPlot::PlotScatter("##end_marker", &x, &y, 1);
                     }
-                }
-                ImPlot::EndPlot();
             }
-        }
 
-        else if (plot_name == "Маятник") {
-            ImPlot::SetNextAxesLimits(-1.5, 1.5, -1.5, 1.5, ImGuiCond_FirstUseEver);
-            if (ImPlot::BeginPlot(plot_name.c_str(), ImVec2(300, 300))) {
-            
-                for (auto& plot_data : plot_data_vector) {
-                    if (plot_data.visible && !plot_data.x_values.empty()) {
-        
-                        ImPlot::PlotLine(plot_data.label.c_str(), 
-                                    plot_data.x_values.data(), 
-                                    plot_data.y_values.data(), 
-                                    plot_data.x_values.size());
+            for (auto& scatterline_data : plot_data.scatterlineVector) {
+                    for (size_t i = 0; i < scatterline_data.x_values.size(); ++i) {
+                        double x = scatterline_data.x_values[i];
+                        double y = scatterline_data.y_values[i];
 
-                        if (!plot_data.x_values.empty()) {
-                            double x = plot_data.x_values.back();  
-                            double y = plot_data.y_values.back(); 
-                            ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle, 6.0f, ImVec4(1,0,0,1), IMPLOT_AUTO, ImVec4(1,0,0,1));
-                            ImPlot::PlotScatter("##end_marker", &x, &y, 1);
-                        }
-                    }
-                }
-                ImPlot::EndPlot();
+                        ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle, scatterline_data.size, 
+                                                scatterline_data.color,
+                                                IMPLOT_AUTO, 
+                                                scatterline_data.color); 
+                        ImPlot::PlotScatter(scatterline_data.label.c_str(), &x, &y, 1);
+                        
+                    }                       
             }
-        }
 
-        else if (plot_name == "Фазовая диаграмма") {
-            ImPlot::SetNextAxesLimits(-3., 3., -3., 3., ImGuiCond_FirstUseEver);
-            if (ImPlot::BeginPlot(plot_name.c_str(), ImVec2(300, 300))) {
-            
-                for (auto& plot_data : plot_data_vector) {
-                    if (plot_data.visible && !plot_data.x_values.empty()) {
-
-                        for (size_t i = 0; i < plot_data.x_values.size(); ++i) {
-                            double x = plot_data.x_values[i];
-                            double y = plot_data.y_values[i];
-
-                            if (i == plot_data.step)
-                            {
-                                ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle, 6.0f, 
-                                                    ImVec4(1,0,0,1),  // красная заливка
-                                                    IMPLOT_AUTO, 
-                                                    ImVec4(1,0,0,1)); // чёрная обводка
-                                ImPlot::PlotScatter(("##pt_" + std::to_string(i)).c_str(), &x, &y, 1);
-                            }
-
-                            else
-                            {
-                                ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle, 0.0f, 
-                                                    ImVec4(0,0,1,1),  // синяя заливка
-                                                    IMPLOT_AUTO, 
-                                                    ImVec4(0,0,1,1)); 
-                                ImPlot::PlotScatter(("##pt_" + std::to_string(i)).c_str(), &x, &y, 1);
-                            }
-                            
-                        }                       
-                    }
-                }
-                ImPlot::EndPlot();
-            }   
-        }
-
-        else if (plot_name == "Движение планеты") {
-            ImPlot::SetNextAxesLimits(-3., 3., -3., 3., ImGuiCond_FirstUseEver);
-            if (ImPlot::BeginPlot(plot_name.c_str(), ImVec2(700, 700))) {
-                int x =0;
-                int y =0;
-                ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle, 15.0f, 
-                                                    ImVec4(1,1,0,1),  // красная заливка
-                                                    IMPLOT_AUTO, 
-                                                    ImVec4(0,0,0,0)); // чёрная обводка
-                ImPlot::PlotScatter("SUN", &x, &y, 1);
-
-
-                for (auto& plot_data : plot_data_vector) {
-                    if (plot_data.visible && !plot_data.x_values.empty()) {
-                        for (size_t i = 0; i < plot_data.x_values.size(); ++i) {
-                            double x = plot_data.x_values[i];
-                            double y = plot_data.y_values[i];
-
-                            if (i == plot_data.step)
-                            {
-                                ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle, 15.0f, 
-                                                    ImVec4(1,0,0,1),  // красная заливка
-                                                    IMPLOT_AUTO, 
-                                                    ImVec4(0,0,0,0)); // чёрная обводка
-                                ImPlot::PlotScatter(("##pt_" + std::to_string(i)).c_str(), &x, &y, 1);
-                            }
-
-                            else
-                            {
-                                ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle, 5.0f, 
-                                                    ImVec4(0,0,1,1),  // синяя заливка
-                                                    IMPLOT_AUTO, 
-                                                    ImVec4(0,0,0,0)); 
-                                ImPlot::PlotScatter(("##pt_" + std::to_string(i)).c_str(), &x, &y, 1);
-                            }
-                            
-                        }
-                    }
-                }
+            for (auto& scatter_data : plot_data.scatterVector) {
+                    float x = scatter_data.x_values;
+                    float y = scatter_data.y_values;
+                    ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle, scatter_data.size, 
+                                                        scatter_data.color,  // красная заливка
+                                                        IMPLOT_AUTO, 
+                                                        scatter_data.color); // чёрная обводка
+                    ImPlot::PlotScatter(scatter_data.label.c_str(), &x, &y, 1);                     
+            }
             ImPlot::EndPlot();
-            }
         }
-    
+        ImGui::SetNextItemWidth(150.f);
+        ImGui::SliderInt("Ширина", &plot_data.scale.width, 
+                                100, 1000, "%d", 10);
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(150.f);
+        ImGui::SliderInt("Высота", &plot_data.scale.height, 
+                                100, 1000, "%d", 10);
+                                
         ImGui::End();
     }
-
-
-    // Выполняем функцию расчета если она установлена
-    if (g_calculation_function) {
-        g_calculation_function();
-    }
+    
 
     ImGui::Render();
     
@@ -316,11 +248,11 @@ void shutdown_gui_library() {
 
 // === ФУНКЦИИ ДЛЯ РАБОТЫ С ПАРАМЕТРАМИ ===
 
-void add_float_param(const std::string& name, const std::string& label, 
+void add_float_param(const std::string& name, 
                     float initial_value, float min, float max , float step , bool use_slider) {
     Parameter param;
     param.name = name;
-    param.label = label;
+    param.label = name;
     param.type = ParamType::Float;
     param.float_value = initial_value;
     param.min_value = min;
@@ -330,11 +262,11 @@ void add_float_param(const std::string& name, const std::string& label,
     g_parameters[name] = param;
 }
 
-void add_int_param(const std::string& name, const std::string& label, 
+void add_int_param(const std::string& name, 
                   int initial_value, int min, int max, int step , bool use_slider) {
     Parameter param;
     param.name = name;
-    param.label = label;
+    param.label = name;
     param.type = ParamType::Int;
     param.int_value = initial_value;
     param.min_value = (float)min;
@@ -344,21 +276,30 @@ void add_int_param(const std::string& name, const std::string& label,
     g_parameters[name] = param;
 }
 
-void add_bool_param(const std::string& name, const std::string& label, bool initial_value) {
+void add_bool_param(const std::string& name, bool initial_value) {
     Parameter param;
     param.name = name;
-    param.label = label;
+    param.label = name;
     param.type = ParamType::Bool;
     param.bool_value = initial_value;
     g_parameters[name] = param;
 }
 
-void add_string_param(const std::string& name, const std::string& label, const std::string& initial_value) {
+void add_string_param(const std::string& name, const std::string& initial_value) {
     Parameter param;
     param.name = name;
-    param.label = label;
+    param.label = name;
     param.type = ParamType::String;
     param.string_value = initial_value;
+    g_parameters[name] = param;
+}
+
+void add_button_param(const std::string& name, std::function<void()> function) {
+    Parameter param;
+    param.name = name;
+    param.label = name;
+    param.type = ParamType::Button;
+    param.function = function;
     g_parameters[name] = param;
 }
 
@@ -369,6 +310,13 @@ float get_float_param(const std::string& name) {
     }
     return 0.0f;
 }
+
+// void set_float_param(const std::string& name, float value) {
+//     auto it = g_parameters.find(name);
+//     if (it != g_parameters.end() && it->second.type == ParamType::Bool) {
+//         it->second.float_value = value;
+//     }
+// }
 
 int get_int_param(const std::string& name) {
     auto it = g_parameters.find(name);
@@ -386,6 +334,13 @@ bool get_bool_param(const std::string& name) {
     return false;
 }
 
+void set_bool_param(const std::string& name, bool value) {
+    auto it = g_parameters.find(name);
+    if (it != g_parameters.end() && it->second.type == ParamType::Bool) {
+        it->second.bool_value = value;
+    }
+}
+
 std::string get_string_param(const std::string& name) {
     auto it = g_parameters.find(name);
     if (it != g_parameters.end() && it->second.type == ParamType::String) {
@@ -394,26 +349,64 @@ std::string get_string_param(const std::string& name) {
     return "";
 }
 
+
+
 // === ФУНКЦИИ ДЛЯ РАБОТЫ С ГРАФИКАМИ ===
 
-void create_plot(const std::string& name, const std::string& title) {
-    g_plots[name] = std::vector<PlotData>();
+void create_plot(const std::string& name, const Scale& scale) {
+    g_plots[name] = PlotData(scale);
 }
 
-void add_plot_data(const std::string& plot_name, const std::vector<float>& x, 
-                  const std::vector<float>& y, const std::string& label, const size_t step) {
+void add_plot_scatter(const std::string& plot_name, const float& x, const float& y, 
+                    const std::string& label, const ImVec4& color, const float& size) {
     auto it = g_plots.find(plot_name);
     if (it != g_plots.end()) {
-        PlotData data;
+        Scatter data;
         data.x_values = x;
         data.y_values = y;
         data.label = label;
-        data.step = step;
-        it->second.push_back(data);
+        data.color = color;
+        data.size = size;
+        it->second.scatterVector.push_back(data);
+    }
+}
+
+void add_plot_scatterline(const std::string& plot_name, const std::vector<float>& x, const std::vector<float>& y, 
+                    const std::string& label, const ImVec4& color, const float& size) {
+    auto it = g_plots.find(plot_name);
+    if (it != g_plots.end()) {
+        ScatterLine data;
+        data.x_values = x;
+        data.y_values = y;
+        data.label = label;
+        data.color = color;
+        data.size = size;
+        it->second.scatterlineVector.push_back(data);
+    }
+}
+
+void add_plot_line(const std::string& plot_name, const std::vector<float>& x, const std::vector<float>& y, 
+                    const std::string& label) {
+    auto it = g_plots.find(plot_name);
+    if (it != g_plots.end()) {
+        FillLine data;
+        data.x_values = x;
+        data.y_values = y;
+        data.label = label;
+        it->second.lineVector.push_back(data);
     }
 }
 
 void clear_plot(const std::string& plot_name) {
+    auto it = g_plots.find(plot_name);
+    if (it != g_plots.end()) {
+        it->second.scatterVector.clear();
+        it->second.scatterlineVector.clear();
+        it->second.lineVector.clear();
+    }
+}
+
+void clear_data(const std::string& plot_name) {
     auto it = g_plots.find(plot_name);
     if (it != g_plots.end()) {
         it->second.clear();
@@ -426,24 +419,26 @@ void set_calculation_function(std::function<void()> calc_func) {
     g_calculation_function = calc_func;
 }
 
-int get_plot_data_size(const std::string& plot_name) {
-    auto it = g_plots.find(plot_name);
-    if (it != g_plots.end() && !it->second.empty()) {
-        return it->second[0].x_values.size();
-    }
-    return 0;
-}
 
-void fill_plot_data(const std::string& plot_name, int index, float x, float y) {
-    auto it = g_plots.find(plot_name);
-    if (it != g_plots.end() && !it->second.empty()) {
-        auto& plot_data = it->second[0];
-        if (index < plot_data.x_values.size()) {
-            plot_data.x_values[index] = x;
-            plot_data.y_values[index] = y;
-        }
-    }
-}
+
+// int get_plot_data_size(const std::string& plot_name) {
+//     auto it = g_plots.find(plot_name);
+//     if (it != g_plots.end() && !it->second.empty()) {
+//         return it->second[0].x_values.size();
+//     }
+//     return 0;
+// }
+
+// void fill_plot_data(const std::string& plot_name, int index, float x, float y) {
+//     auto it = g_plots.find(plot_name);
+//     if (it != g_plots.end() && !it->second.empty()) {
+//         auto& plot_data = it->second[0];
+//         if (index < plot_data.x_values.size()) {
+//             plot_data.x_values[index] = x;
+//             plot_data.y_values[index] = y;
+//         }
+//     }
+// }
 
 // === УТИЛИТЫ ===
 
