@@ -20,8 +20,7 @@ Scale scale(700, 700, -3.f, 3.f, -3.f, 3.f); // создание объекта 
 void click_button() {
     v_x = 0.0f;
     v_y = get_float_param("Скорость");
-    set_bool_param("Пауза", true);
-    buffer.clear(x_0, y_0);
+    buffer.fill_value(x_0, y_0);
     x = x_0; y = y_0;
 }
 
@@ -60,9 +59,9 @@ void calculation_function(){
 int main() {
     if (!init_gui_library("Task_3: Движение планеты", widhtWindow, hieghtWindow)) return -1;
 
-    add_float_param("Скорость", v_y);
     add_bool_param("Пауза", false);
     add_button_param("Переинициализация", click_button);
+    add_float_param("Скорость", v_y);
 
     create_plot("Движение планеты", scale);
 

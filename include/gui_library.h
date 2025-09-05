@@ -41,7 +41,7 @@ public:
         y[head] = value;
     }
 
-    void clear(float x_value, float y_value) {
+    void fill_value(float x_value, float y_value) {
         head = 0;
 
         std::fill(x.begin(), x.end(), x_value);
@@ -102,12 +102,16 @@ struct FillLine {
     std::vector<float> y_values;
     std::string label;
     bool visible = true;
+    ImVec4 color;
+    float size;
 
     void clear() {
         x_values.clear();
         y_values.clear();
         label.clear();
         visible = true;
+        color = ImVec4(0, 0, 0, 0);
+        size = 0.0f;
     }
 };
 
@@ -214,7 +218,7 @@ void add_plot_scatterline(const std::string& plot_name, const std::vector<float>
                     const std::string& label = "Данные", const ImVec4& color = BLACK, const float& size = 1.0f);
 
 void add_plot_line(const std::string& plot_name, const std::vector<float>& x, const std::vector<float>& y, 
-                    const std::string& label = "Данные");
+                    const std::string& label = "Данные", const ImVec4& color = BLUE, const float& size = 1.0f);
 
 // Очистить график
 void clear_plot(const std::string& plot_name);

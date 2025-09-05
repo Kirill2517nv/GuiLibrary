@@ -68,12 +68,12 @@ bool init_gui_library(const std::string& window_title, const int widthWindow, co
     ImFont* font = nullptr;
     
     // Попробуем загрузить шрифт из системы Windows
-    font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/arial.ttf", 24.0f);
+    font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/arial.ttf", 20.0f);
     if (!font) {
-        font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/segoeui.ttf", 24.0f);
+        font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/segoeui.ttf", 20.0f);
     }
     if (!font) {
-        font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/calibri.ttf", 24.0f);
+        font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/calibri.ttf", 20.0f);
     }
     if (!font) {
         // Если не удалось загрузить системный шрифт, используем встроенный
@@ -161,18 +161,12 @@ bool gui_main_loop() {
         ImPlot::SetNextAxesLimits(plot_data.scale.x_min, plot_data.scale.x_max, plot_data.scale.y_min, plot_data.scale.y_max, ImGuiCond_FirstUseEver);
         if (ImPlot::BeginPlot(plot_name.c_str(), ImVec2(plot_data.scale.width, plot_data.scale.height))) {
             for (auto& line_data : plot_data.lineVector) {
-                    ImPlot::SetNextLineStyle(BLUE, 10.0f);
+                    ImPlot::SetNextLineStyle(line_data.color, line_data.size);
                     ImPlot::PlotLine(line_data.label.c_str(), 
                                         line_data.x_values.data(), 
                                         line_data.y_values.data(), 
                                         line_data.x_values.size());
                                         
-                    if (!line_data.x_values.empty()) {
-                        double x = line_data.x_values.back();  
-                        double y = line_data.y_values.back(); 
-                        ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle, 12.0f, ImVec4(1,0,0,1), IMPLOT_AUTO, ImVec4(1,0,0,1));
-                        ImPlot::PlotScatter("##end_marker", &x, &y, 1);
-                    }
             }
 
             for (auto& scatterline_data : plot_data.scatterlineVector) {
@@ -395,13 +389,15 @@ void add_plot_scatterline(const std::string& plot_name, const std::vector<float>
 }
 
 void add_plot_line(const std::string& plot_name, const std::vector<float>& x, const std::vector<float>& y, 
-                    const std::string& label) {
+                    const std::string& label, const ImVec4& color, const float& size) {
     auto it = g_plots.find(plot_name);
     if (it != g_plots.end()) {
         FillLine data;
         data.x_values = x;
         data.y_values = y;
         data.label = label;
+        data.color = color;
+        data.size = size;
         it->second.lineVector.push_back(data);
     }
 }

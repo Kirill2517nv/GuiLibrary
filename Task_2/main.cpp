@@ -8,7 +8,7 @@
 #define M_PI 3.14159265358979323846 
 #endif
 
-int widhtWindow = 2000;
+int widhtWindow = 850;
 int hieghtWindow = 1200;
 
 float t = 0.0f;    // текущее глобальное время
@@ -24,14 +24,13 @@ float alpha = 0.0f; // угол отклонения маятника от ве�
 float v = 1.f; // скорость тела
 
 DataBuffer buffer(10, 2000, alpha, v); // создание объекта
-Scale scale(1000, 1000, -1.1, 1.1, -1.1, 1.1);
+Scale scale(500, 500, -1.1, 1.1, -1.1, 1.1);
 
 void click_button() {
     t = 0;
     alpha = 0;
     v = get_float_param("Скорость");
-    set_bool_param("Пауза", true);
-    buffer.clear(alpha, v);
+    buffer.fill_value(alpha, v);
 }
 
 void calculation_function() {
@@ -61,11 +60,12 @@ void calculation_function() {
 
     // обновляем график маятника
     clear_plot("Маятник");
-    add_plot_line("Маятник", mx, my, "Маятник" );
+    add_plot_line("Маятник", mx, my, "Маятник", BLUE, 2.f);
+    add_plot_scatter("Маятник", mx[1], my[1], "Маятник", RED, 6.f);
 
 // __ рисуем фазовую диаграмму __   
     // считаем скорость по формуле
-    v += - g * sin(alpha) * dt - 0.1*v*dt;
+    v += - g * sin(alpha) * dt;
 
     // добавляем новую точку (alpha, v) 
     buffer.addPoint(alpha, v);
@@ -76,17 +76,16 @@ void calculation_function() {
 
     // обновляем график фазовой диаграммы
     clear_plot("Фазовая диаграмма");
-    add_plot_scatterline("Фазовая диаграмма", x, y, "Фазовая диаграмма", BLUE, 12.f);
-    add_plot_scatter("Фазовая диаграмма", x[buffer.head], y[buffer.head], "Фазовая диаграмма", RED, 12.f);
+    add_plot_scatterline("Фазовая диаграмма", x, y, "Фазовая диаграмма", BLUE);
+    add_plot_scatter("Фазовая диаграмма", x[buffer.head], y[buffer.head], "Фазовая диаграмма", RED, 6.f);
 }
 
 int main() {
     if (!init_gui_library("Task_2: Движение маятника", widhtWindow, hieghtWindow)) return -1;
 
-    
-
     add_bool_param("Пауза", false);
     add_button_param("Переинициализация", click_button);
+    
     add_float_param("Скорость", v);
 
     create_plot("Маятник", scale);

@@ -7,6 +7,11 @@ float dt = 0.05f;  // добавка ко времени
 DataBuffer buffer(30, 20000); // создание объекта
 Scale scale(750, 475, 0., 30., -2., 2.);
 
+void click_clear() {
+    t = 0;
+    buffer.fill_value(0.f, 0.f);
+}
+
 void calculation_function(){
     bool pause = get_bool_param("pause");
         if (pause) return;
@@ -39,6 +44,7 @@ void calculation_function(){
 int main() {
     if (!init_gui_library("Task_1: Двигающаяся синусоида")) return -1;
 
+    add_button_param("Очистка", click_clear);
     add_float_param("Амплитуда 1", 1.0f);
     add_float_param("Частота 1", 1.0f);
     add_float_param("Амплитуда 2", 1.0f);
