@@ -119,8 +119,11 @@ bool gui_main_loop() {
                 if (param.use_slider) {
                     ImGui::SliderFloat(param.label.c_str(), &param.float_value, 
                                 param.min_value, param.max_value, "%.3f");
+                    
                 } 
                 else {
+                    if (param.float_value < param.min_value) param.float_value = param.min_value;
+                    if (param.float_value > param.max_value) param.float_value = param.max_value;
                     ImGui::InputFloat(param.label.c_str(), &param.float_value, param.step);
                 }
                 break;

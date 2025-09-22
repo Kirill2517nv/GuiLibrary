@@ -52,6 +52,40 @@ public:
     std::vector<float> getY() const { return y; }
 };
 
+class DataArray {
+public:
+    std::vector<float> x;   // массив X (время в пределах окна)
+    std::vector<float> y;   // массив значений функции
+    size_t maxSize;         // число точек в буфере
+    size_t head;            // текущая позиция для записи
+    float window;           // ширина окна по X
+
+
+    DataArray(float windowWidth, size_t points = 200, float x_0 = 0.0f, float y_0 = 0.0f)
+        : maxSize(points), head(0), window(windowWidth)
+    {
+        x.resize(points, x_0);
+        y.resize(points, y_0);
+    }
+
+    void addPoint(float t, float value) {
+        head = (head + 1) % maxSize;
+
+        x[head] = t;
+        y[head] = value;
+    }
+
+    void fill_value(float x_value, float y_value) {
+        head = 0;
+
+        std::fill(x.begin(), x.end(), x_value);
+        std::fill(y.begin(), y.end(), y_value);
+    }
+
+    std::vector<float> getX() const { return x; }
+    std::vector<float> getY() const { return y; }
+};
+
 // Типы параметров
 enum class ParamType {
     Float,      // Число с плавающей точкой

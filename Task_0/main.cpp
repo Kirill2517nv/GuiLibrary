@@ -20,7 +20,7 @@ float alpha = 30.f; // начальный угол наклона
 std::vector<float> target_x = {8.5, 8.5}; 
 std::vector<float> target_y = {3.0, 3.5};
 
-DataBuffer buffer(100, 20000, x_0, y_0); // создание объекта
+DataArray buffer(100, 20000, x_0, y_0); // создание объекта
 Scale scale(700, 700, -0.1f, 10.f, -0.1f, 5.f); // создание объекта для задания шкалы
 
 void click_button() {
@@ -39,6 +39,7 @@ void click_button() {
 
 void calculation_function(){
     bool pause = get_bool_param("Пауза");
+
     
     dt = get_float_param("dt");
     // если pause = true, то программа ставится на паузу
@@ -67,7 +68,7 @@ void calculation_function(){
     if (((x >= target_x[0] && x <= target_x[0] + V * cos(alpha * M_PI / 180.) * dt) && (y >= target_y[0] && y <= target_y[1]))) {
         set_bool_param("Пауза", true);
         dt = 0; t = 0;
-        buffer.fill_value(x_0, y_0);
+        //buffer.fill_value(x_0, y_0);
     }
 
     // обновляем график 
