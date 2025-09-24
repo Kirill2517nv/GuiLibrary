@@ -19,13 +19,13 @@ Scale scale(700, 700, -3.f, 3.f, -3.f, 3.f); // создание объекта 
 
 void click_button() {
     v_x = 0.0f;
-    v_y = get_float_param("Скорость");
+    v_y = get_float_param("Velocity");
     buffer.fill_value(x_0, y_0);
     x = x_0; y = y_0;
 }
 
 void calculation_function(){
-    bool pause = get_bool_param("Пауза");
+    bool pause = get_bool_param("Pause");
     
     if (pause)
         return;
@@ -50,20 +50,20 @@ void calculation_function(){
     std::vector<float> y = buffer.getY();
 
     // обновляем график фазовой диаграммы
-    clear_plot("Движение планеты");
-    add_plot_scatterline("Движение планеты", x, y, "Планета", BLUE);
-    add_plot_scatter("Движение планеты", x[buffer.head], y[buffer.head], "Планета", RED, 8.0f);
-    add_plot_scatter("Движение планеты", 0, 0, "Солнце", YELLOW, 13.0f);
+    clear_plot("Gravity");
+    add_plot_scatterline("Gravity", x, y, "Planet", BLUE);
+    add_plot_scatter("Gravity", x[buffer.head], y[buffer.head], "Planet", RED, 8.0f);
+    add_plot_scatter("Gravity", 0, 0, "Sun", YELLOW, 13.0f);
 }
 
 int main() {
-    if (!init_gui_library("Task_3: Движение планеты", widhtWindow, hieghtWindow)) return -1;
+    if (!init_gui_library("Task_3: Gravity", widhtWindow, hieghtWindow)) return -1;
 
-    add_bool_param("Пауза", false);
-    add_button_param("Переинициализация", click_button);
-    add_float_param("Скорость", v_y);
+    add_bool_param("Pause", false);
+    add_button_param("Restart", click_button);
+    add_float_param("Velocity", v_y);
 
-    create_plot("Движение планеты", scale);
+    create_plot("Gravity", scale);
 
     set_calculation_function(calculation_function);
 

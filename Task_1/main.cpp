@@ -13,17 +13,17 @@ void click_clear() {
 }
 
 void calculation_function(){
-    bool pause = get_bool_param("pause");
+    bool pause = get_bool_param("Pause");
         if (pause) return;
         if (!pause) 
             t += dt; // шаг времени с учётом скорости
         
         // инициализируем параметры
-        float A1 = get_float_param("Амплитуда 1");
-        float w1 = get_float_param("Частота 1");
+        float A1 = get_float_param("Amplitude 1");
+        float w1 = get_float_param("Frequency 1");
 
-        float A2 = get_float_param("Амплитуда 2");
-        float w2 = get_float_param("Частота 2");
+        float A2 = get_float_param("Amplitude 2");
+        float w2 = get_float_param("Frequency 2");
 
         // считаем y = A * sin(ωt)
         float y_t = A1 * sin(w1 * t) + A2 * sin(w2 * t);
@@ -42,15 +42,15 @@ void calculation_function(){
 }
 
 int main() {
-    if (!init_gui_library("Task_1: Двигающаяся синусоида")) return -1;
+    if (!init_gui_library("Task_1: The movement of the sin")) return -1;
 
-    add_button_param("Очистка", click_clear);
-    add_float_param("Амплитуда 1", 1.0f);
-    add_float_param("Частота 1", 1.0f);
-    add_float_param("Амплитуда 2", 1.0f);
-    add_float_param("Частота 2", 1.0f);
+    add_button_param("Clear", click_clear);
+    add_float_param("Amplitude 1", 1.0f);
+    add_float_param("Frequency 1", 1.0f);
+    add_float_param("Amplitude 2", 1.0f);
+    add_float_param("Frequency 2", 1.0f);
 // сделать кнопку с очисткой буфера
-    add_bool_param("Пауза", false);
+    add_bool_param("Pause", false);
 
     create_plot("Sin", scale);
 

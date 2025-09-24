@@ -103,7 +103,7 @@ bool gui_main_loop() {
     ImGui::DockSpaceOverViewport();
 
     // Левая панель с параметрами
-    ImGui::Begin("Параметры", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+    ImGui::Begin("Parameters", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
     
        // Выполняем функцию расчета если она установлена
     if (g_calculation_function) {
@@ -198,11 +198,11 @@ bool gui_main_loop() {
             ImPlot::EndPlot();
         }
         ImGui::SetNextItemWidth(150.f);
-        ImGui::SliderInt("Ширина", &plot_data.scale.width, 
+        ImGui::SliderInt("Width", &plot_data.scale.width, 
                                 100, 1000, "%d");
         ImGui::SameLine();
         ImGui::SetNextItemWidth(150.f);
-        ImGui::SliderInt("Высота", &plot_data.scale.height, 
+        ImGui::SliderInt("Height", &plot_data.scale.height, 
                                 100, 1000, "%d");
                                 
         ImGui::End();

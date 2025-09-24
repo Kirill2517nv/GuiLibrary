@@ -25,8 +25,8 @@ Scale scale(700, 700, -0.1f, 10.f, -0.1f, 5.f); // создание объект
 
 void click_button() {
     // инициализируем параметры
-    alpha = get_float_param("Угол");
-    V = get_float_param("Скорость");
+    alpha = get_float_param("Angle");
+    V = get_float_param("Velocity");
     x_0 = get_float_param("x_0");
     y_0 = get_float_param("y_0");
 
@@ -38,7 +38,7 @@ void click_button() {
 }
 
 void calculation_function(){
-    bool pause = get_bool_param("Пауза");
+    bool pause = get_bool_param("Pause");
 
     
     dt = get_float_param("dt");
@@ -66,37 +66,37 @@ void calculation_function(){
 
     // условие попадания в мишень
     if (((x >= target_x[0] && x <= target_x[0] + V * cos(alpha * M_PI / 180.) * dt) && (y >= target_y[0] && y <= target_y[1]))) {
-        set_bool_param("Пауза", true);
+        set_bool_param("Pause", true);
         dt = 0; t = 0;
         //buffer.fill_value(x_0, y_0);
     }
 
     // обновляем график 
-    clear_plot("Движение под углом");
+    clear_plot("Movement at an angle");
 
     // создаём тело (add_plot_scatter) и его траекторию (add_plot_scatterline)
-    add_plot_scatterline("Движение под углом", X, Y, "Тело", BLUE);
-    add_plot_scatter("Движение под углом", X[buffer.head], Y[buffer.head], "Тело", RED, 5.f);
+    add_plot_scatterline("Movement at an angle", X, Y, "Body", BLUE);
+    add_plot_scatter("Movement at an angle", X[buffer.head], Y[buffer.head], "Body", RED, 5.f);
 
     // создаём мишень: отрисовываем линию (add_plot_line) и добавляем точки на границах (add_plot_scatter)
-    add_plot_line("Движение под углом", target_x, target_y, "Мишень", WHITE, 2.f);
-    add_plot_scatter("Движение под углом", target_x[0], target_y[0], "Мишень", WHITE, 3.f);
-    add_plot_scatter("Движение под углом", target_x[1], target_y[1], "Мишень", WHITE, 3.f);
+    add_plot_line("Movement at an angle", target_x, target_y, "Target", WHITE, 2.f);
+    add_plot_scatter("Movement at an angle", target_x[0], target_y[0], "Target", WHITE, 3.f);
+    add_plot_scatter("Movement at an angle", target_x[1], target_y[1], "Target", WHITE, 3.f);
 }
 
 int main() {
-    if (!init_gui_library("Task_0: Движение под углом", widhtWindow, hieghtWindow)) return -1;
+    if (!init_gui_library("Task_0: Movement at an angle", widhtWindow, hieghtWindow)) return -1;
     setlocale(LC_ALL, "Russian");
 
-    add_bool_param("Пауза", false);
-    add_button_param("Переинициализация", click_button);
-    add_float_param("Скорость", V);
-    add_float_param("Угол", alpha);
+    add_bool_param("Pause", false);
+    add_button_param("Restart", click_button);
+    add_float_param("Velocity", V);
+    add_float_param("Angle", alpha);
     add_float_param("dt", dt);
     add_float_param("x_0", x_0);
     add_float_param("y_0", y_0);
 
-    create_plot("Движение под углом", scale);
+    create_plot("Movement at an angle", scale);
 
     set_calculation_function(calculation_function);
 
