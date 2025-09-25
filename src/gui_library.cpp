@@ -122,8 +122,6 @@ bool gui_main_loop() {
                     
                 } 
                 else {
-                    if (param.float_value < param.min_value) param.float_value = param.min_value;
-                    if (param.float_value > param.max_value) param.float_value = param.max_value;
                     ImGui::InputFloat(param.label.c_str(), &param.float_value, param.step);
                 }
                 break;

@@ -68,7 +68,6 @@ void calculation_function(){
     if (((x >= target_x[0] && x <= target_x[0] + V * cos(alpha * M_PI / 180.) * dt) && (y >= target_y[0] && y <= target_y[1]))) {
         set_bool_param("Pause", true);
         dt = 0; t = 0;
-        //buffer.fill_value(x_0, y_0);
     }
 
     // обновляем график 
