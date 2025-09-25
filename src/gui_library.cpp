@@ -440,9 +440,6 @@ void set_calculation_function(std::function<void()> calc_func) {
 
 // === УТИЛИТЫ ===
 
-std::vector<float> create_data_array(int size) {
-    return std::vector<float>(size, 0.0f);
-}
 
 void sleep_ms(int milliseconds) {
     std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));

@@ -14,43 +14,6 @@
 #define BLACK ImVec4(0.0f, 0.0f, 0.0f, 1.0f)
 #define WHITE ImVec4(1.0f, 1.0f, 1.0f, 1.0f)
 
-// Простой API для школьников - никаких классов, только функции и лямбды
-
-class DataBuffer {
-public:
-    std::vector<float> x;   // массив X (время в пределах окна)
-    std::vector<float> y;   // массив значений функции
-    size_t maxSize;         // число точек в буфере
-    size_t head;            // текущая позиция для записи
-    float window;           // ширина окна по X
-
-
-    DataBuffer(float windowWidth, size_t points = 200, float x_0 = 0.0f, float y_0 = 0.0f)
-        : maxSize(points), head(0), window(windowWidth)
-    {
-        x.resize(points, x_0);
-        y.resize(points, y_0);
-    }
-
-    void addPoint(float t, float value) {
-        head = (head + 1) % maxSize;
-        // отображаем время в окно [0, window)
-        float t_window = fmod(t, window);
-
-        x[head] = t_window;
-        y[head] = value;
-    }
-
-    void fill_value(float x_value, float y_value) {
-        head = 0;
-
-        std::fill(x.begin(), x.end(), x_value);
-        std::fill(y.begin(), y.end(), y_value);
-    }
-
-    std::vector<float> getX() const { return x; }
-    std::vector<float> getY() const { return y; }
-};
 
 class DataArray {
 public:
@@ -226,7 +189,7 @@ void add_bool_param(const std::string& name, bool initial_value = false);
 
 // Добавить параметр типа string
 void add_string_param(const std::string& name, const std::string& initial_value = "");
-
+// Добавить параметр типа button
 void add_button_param(const std::string& name, std::function<void()> function);
 
 // Получить значение параметра
@@ -241,16 +204,13 @@ std::string get_string_param(const bool& name);
 // Создать новый график
 void create_plot(const std::string& name, const Scale& scale);
 
-// Добавить данные на график
-// void add_plot_data(const std::string& plot_name, const std::vector<float>& x, const std::vector<float>& y, const Scale& scale,
-//                   const std::string& label = "Данные", const size_t step = 0);
-
+//Нарисовать точку
 void add_plot_scatter(const std::string& plot_name, const float& x, const float& y, 
                     const std::string& label = "Данные", const ImVec4& color = BLACK, const float& size = 1.0f);
-
+//Нарисовать линию из точек
 void add_plot_scatterline(const std::string& plot_name, const std::vector<float>& x, const std::vector<float>& y, 
                     const std::string& label = "Данные", const ImVec4& color = BLACK, const float& size = 1.0f);
-
+//Нарисовать сплошную линию
 void add_plot_line(const std::string& plot_name, const std::vector<float>& x, const std::vector<float>& y, 
                     const std::string& label = "Данные", const ImVec4& color = BLUE, const float& size = 1.0f);
 
@@ -269,9 +229,6 @@ int get_plot_data_size(const std::string& plot_name);
 void fill_plot_data(const std::string& plot_name, int index, float x, float y);
 
 // === УТИЛИТЫ ===
-
-// Создать массив для заполнения данными
-std::vector<float> create_data_array(int size);
 
 // Функция для паузы (для анимации)
 void sleep_ms(int milliseconds);
