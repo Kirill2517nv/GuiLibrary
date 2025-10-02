@@ -68,18 +68,19 @@ bool init_gui_library(const std::string& window_title, const int widthWindow, co
     ImFont* font = nullptr;
     
     // Попробуем загрузить шрифт из системы Windows
+    //font = io.Fonts->AddFontDefault();
     font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/arial.ttf", 20.0f);
-    if (!font) {
-        font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/segoeui.ttf", 20.0f);
-    }
-    if (!font) {
-        font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/calibri.ttf", 20.0f);
-    }
-    if (!font) {
-        // Если не удалось загрузить системный шрифт, используем встроенный
-        font = io.Fonts->AddFontDefault();
-        std::cerr << "Предупреждение: Не удалось загрузить шрифт с поддержкой кириллицы. Используется стандартный шрифт." << std::endl;
-    }
+    //if (!font) {
+    //    font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/segoeui.ttf", 20.0f);
+    //}
+    //if (!font) {
+    //    font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/calibri.ttf", 20.0f);
+    //}
+    //if (!font) {
+    //    // Если не удалось загрузить системный шрифт, используем встроенный
+    //    font = io.Fonts->AddFontDefault();
+    //    std::cerr << "Предупреждение: Не удалось загрузить шрифт с поддержкой кириллицы. Используется стандартный шрифт." << std::endl;
+    //}
 
     // Инициализация бэкендов
     ImGui_ImplGlfw_InitForOpenGL(g_window, true);
@@ -139,7 +140,7 @@ bool gui_main_loop() {
                 break;
             case ParamType::String:
                 char buffer[256];
-                strcpy_s(buffer, param.string_value.c_str());
+                strcpy(buffer, param.string_value.c_str());
                 if (ImGui::InputText(param.label.c_str(), buffer, sizeof(buffer))) {
                     param.string_value = buffer;
                 }
