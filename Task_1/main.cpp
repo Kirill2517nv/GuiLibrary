@@ -3,15 +3,17 @@
 #include <cmath>
 
 float t = 0.0f;    // текущее глобальное время
-float dt = 0.05f;  // добавка ко времени
-DataBuffer buffer(30, 20000); // создание объекта
-Scale scale(750, 475, 0., 30., -2., 2.);
+float dt = 0.05f;  // шаг по времени
+DataArray buffer(30, 20000); // объект для хранения точек для отрисовки
+Scale scale(750, 475, 0., 30., -2., 2.);// объект для задания шкалы
 
+// функция обработки нажатия на кнопку (очистка графика)
 void click_clear() {
     t = 0;
     buffer.fill_value(0.f, 0.f);
 }
 
+//основная вычислительная функция
 void calculation_function(){
     bool pause = get_bool_param("Pause");
         if (pause) return;
@@ -42,24 +44,28 @@ void calculation_function(){
 }
 
 int main() {
+    //инициализация основного окна
     if (!init_gui_library("Task_1: The movement of the sin")) return -1;
 
-    add_button_param("Clear", click_clear);
+    add_button_param("Restart", click_clear);
     add_float_param("Amplitude 1", 1.0f);
     add_float_param("Frequency 1", 1.0f);
     add_float_param("Amplitude 2", 1.0f);
     add_float_param("Frequency 2", 1.0f);
-// сделать кнопку с очисткой буфера
+
     add_bool_param("Pause", false);
 
     create_plot("Sin", scale);
 
+    //установить расчетную функцию
     set_calculation_function(calculation_function);
 
+    //основной цикл работы программы (считай->рисуй)
     while (gui_main_loop()) {
         sleep_ms(16);
     }
 
+    //завершение работы 
     shutdown_gui_library();
     return 0;
 }

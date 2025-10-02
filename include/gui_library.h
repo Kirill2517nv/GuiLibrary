@@ -34,7 +34,7 @@ public:
     void addPoint(float t, float value) {
         head = (head + 1) % maxSize;
 
-        x[head] = t;
+        x[head] = window == 0.f ? t: fmod(t, window);
         y[head] = value;
     }
 

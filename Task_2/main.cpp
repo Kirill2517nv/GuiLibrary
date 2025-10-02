@@ -8,8 +8,8 @@
 #define M_PI 3.14159265358979323846 
 #endif
 
-int widhtWindow = 850;
-int hieghtWindow = 1200;
+int widhtWindow = 850;// ширина окна
+int hieghtWindow = 1200;// высота окна
 
 float t = 0.0f;    // текущее глобальное время
 float dt = 0.05f;  // добавка ко времени
@@ -23,9 +23,10 @@ bool pause;
 float alpha = 0.0f; // угол отклонения маятника от вертикали
 float v = 1.f; // скорость тела
 
-DataBuffer buffer(10, 2000, alpha, v); // создание объекта
-Scale scale(500, 500, -1.1, 1.1, -1.1, 1.1);
+DataArray buffer(10, 2000, alpha, v); // объект для хранения точек для отрисовки
+Scale scale(500, 500, -1.1, 1.1, -1.1, 1.1); // объект для задания шкалы
 
+// функция обработки нажатия на кнопку (Запуск с новой скоростью)
 void click_button() {
     t = 0;
     alpha = 0;
@@ -33,6 +34,7 @@ void click_button() {
     buffer.fill_value(alpha, v);
 }
 
+//основная вычислительная функция
 void calculation_function() {
     pause = get_bool_param("Pause");
 

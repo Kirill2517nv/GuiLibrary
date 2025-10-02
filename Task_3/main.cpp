@@ -2,10 +2,10 @@
 #include <vector>
 #include <cmath>
 
-int widhtWindow = 1200;
-int hieghtWindow = 800;
+int widhtWindow = 1200;// ширина окна
+int hieghtWindow = 800;// высота окна
 
-float dt = 0.02f;  // добавка ко времени
+float dt = 0.02f;  // шаг по времени
 float R;  // расстояние от планеты до Солнца
 float x_0 = 2.5f, y_0 = 0.0f; // начальные координаты планеты
 float x = x_0, y = y_0; // координаты планеты в момент времени t
@@ -14,9 +14,10 @@ float a_x, a_y;  // ускорение планеты по x и y
 float a;      // модуль ускорения
 float alpha = 1.f;
 
-DataBuffer buffer(10, 20000, x, y); // создание объекта
-Scale scale(700, 700, -3.f, 3.f, -3.f, 3.f); // создание объекта для задания шкалы
+DataArray buffer(10, 20000, x, y); // объект для хранения точек для отрисовки
+Scale scale(700, 700, -3.f, 3.f, -3.f, 3.f); // объект для задания шкалы
 
+// функция обработки нажатия на кнопку (Запуск с новой скоростью)
 void click_button() {
     v_x = 0.0f;
     v_y = get_float_param("Velocity");
@@ -24,6 +25,7 @@ void click_button() {
     x = x_0; y = y_0;
 }
 
+//основная вычислительная функция
 void calculation_function(){
     bool pause = get_bool_param("Pause");
     
@@ -42,7 +44,7 @@ void calculation_function(){
     v_x += a_x * dt;
     v_y += a_y * dt;
     
-    // добавляем новую точку (alpha, v) 
+    // добавляем новую точку (x, y) 
     buffer.addPoint(x, y);
 
     // получаем данные для графика
