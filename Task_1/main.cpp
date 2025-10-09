@@ -3,9 +3,9 @@
 #include <cmath>
 
 float t = 0.0f;    // текущее глобальное время
-float dt = 0.05f;  // шаг по времени
-DataArray buffer(30, 20000); // объект для хранения точек для отрисовки
-Scale scale(750, 475, 0., 30., -2., 2.);// объект для задания шкалы
+float dt = 0.15f;  // шаг по времени
+DataArray buffer(200, 20000); // объект для хранения точек для отрисовки
+Scale scale(750, 475, 0., 200., -2., 2.);// объект для задания шкалы
 
 // функция обработки нажатия на кнопку (очистка графика)
 void click_clear() {
@@ -39,8 +39,8 @@ void calculation_function(){
 
         // обновляем график
         clear_plot("Sin");
-        add_plot_scatterline("Sin", x, y, "y = A1*sin(ω1*t) + A2*sin(ω2*t)", BLUE);
-        add_plot_scatter("Sin", x[buffer.head], y[buffer.head], "y = A1*sin(ω1*t) + A2*sin(ω2*t)", RED);
+        add_plot_scatterline("Sin", x, y, "y = A1*sin(omega1*t) + A2*sin(omega2*t)", BLUE);
+        add_plot_scatter("Sin", x[buffer.head], y[buffer.head], "y = A1*sin(omega1*t) + A2*sin(omega2*t)", RED);
 }
 
 int main() {
