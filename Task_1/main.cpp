@@ -20,6 +20,8 @@ void calculation_function(){
         if (!pause) 
             t += dt; // шаг времени с учётом скорости
         
+        set_float_param("Time", t);
+
         // инициализируем параметры
         float A1 = get_float_param("Amplitude 1");
         float w1 = get_float_param("Frequency 1");
@@ -52,6 +54,8 @@ int main() {
     add_float_param("Frequency 1", 1.0f);
     add_float_param("Amplitude 2", 1.0f);
     add_float_param("Frequency 2", 1.0f);
+
+    add_float_param("Time", t);
 
     add_bool_param("Pause", false);
 

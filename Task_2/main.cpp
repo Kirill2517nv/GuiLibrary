@@ -43,7 +43,7 @@ void calculation_function() {
     
     if (!pause) 
         t += dt; // шаг времени с учётом скорости
-    
+    set_float_param("Time", t);
     // считаем угол по формуле
     alpha += v / l * dt;
 
@@ -89,6 +89,7 @@ int main() {
     add_button_param("Restart", click_button);
     
     add_float_param("Velocity", v);
+    add_float_param("Time", t);
 
     create_plot("Pendulum", scale);
     create_plot("Phase diagram", scale);

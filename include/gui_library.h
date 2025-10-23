@@ -194,10 +194,16 @@ void add_button_param(const std::string& name, std::function<void()> function);
 
 // Получить значение параметра
 float get_float_param(const std::string& name);
+
+void set_float_param(const std::string& name, float value);
 int get_int_param(const std::string& name);
+
+void set_int_param(const std::string& name, int value);
 bool get_bool_param(const std::string& name);
 void set_bool_param(const std::string& name, bool value);
-std::string get_string_param(const bool& name);  
+std::string get_string_param(const std::string& name);
+
+void set_string_param(const std::string& name, const std::string& value);
 
 // === ФУНКЦИИ ДЛЯ РАБОТЫ С ГРАФИКАМИ ===
 
@@ -225,7 +231,7 @@ void set_calculation_function(std::function<void()> calc_func);
 // Функция для получения размера массива данных графика
 int get_plot_data_size(const std::string& plot_name);
 
-// Функция для заполнения данных графика (для школьников)
+// Функция для заполнения данных графика 
 void fill_plot_data(const std::string& plot_name, int index, float x, float y);
 
 // === УТИЛИТЫ ===

@@ -303,12 +303,12 @@ float get_float_param(const std::string& name) {
     return 0.0f;
 }
 
-// void set_float_param(const std::string& name, float value) {
-//     auto it = g_parameters.find(name);
-//     if (it != g_parameters.end() && it->second.type == ParamType::Bool) {
-//         it->second.float_value = value;
-//     }
-// }
+void set_float_param(const std::string& name, float value) {
+    auto it = g_parameters.find(name);
+    if (it != g_parameters.end() && it->second.type == ParamType::Float) {
+        it->second.float_value = value;
+    }
+}
 
 int get_int_param(const std::string& name) {
     auto it = g_parameters.find(name);
@@ -316,6 +316,14 @@ int get_int_param(const std::string& name) {
         return it->second.int_value;
     }
     return 0;
+}
+
+void set_int_param(const std::string& name, int value)
+{
+    auto it = g_parameters.find(name);
+	if (it != g_parameters.end() && it->second.type == ParamType::Int) {
+		it->second.int_value = value;
+	}
 }
 
 bool get_bool_param(const std::string& name) {
@@ -341,6 +349,13 @@ std::string get_string_param(const std::string& name) {
     return "";
 }
 
+void set_string_param(const std::string& name, const std::string& value)
+{
+	auto it = g_parameters.find(name);
+	if (it != g_parameters.end() && it->second.type == ParamType::String) {
+		it->second.string_value = value;
+	}
+}
 
 
 // === ФУНКЦИИ ДЛЯ РАБОТЫ С ГРАФИКАМИ ===
