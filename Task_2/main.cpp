@@ -8,8 +8,8 @@
 #define M_PI 3.14159265358979323846 
 #endif
 
-int widhtWindow = 850;
-int hieghtWindow = 1200;
+int widhtWindow = 850;// ширина окна
+int hieghtWindow = 1200;// высота окна
 
 float t = 0.0f;    // текущее глобальное время
 float dt = 0.05f;  // добавка ко времени
@@ -23,25 +23,27 @@ bool pause;
 float alpha = 0.0f; // угол отклонения маятника от вертикали
 float v = 1.f; // скорость тела
 
-DataBuffer buffer(10, 2000, alpha, v); // создание объекта
-Scale scale(500, 500, -1.1, 1.1, -1.1, 1.1);
+DataArray buffer(10, 2000, alpha, v); // объект для хранения точек для отрисовки
+Scale scale(500, 500, -1.1, 1.1, -1.1, 1.1); // объект для задания шкалы
 
+// функция обработки нажатия на кнопку (Запуск с новой скоростью)
 void click_button() {
     t = 0;
     alpha = 0;
-    v = get_float_param("Скорость");
+    v = get_float_param("Velocity");
     buffer.fill_value(alpha, v);
 }
 
+//основная вычислительная функция
 void calculation_function() {
-    pause = get_bool_param("Пауза");
+    pause = get_bool_param("Pause");
 
     if (pause)
         return;
     
     if (!pause) 
         t += dt; // шаг времени с учётом скорости
-    
+    set_float_param("Time", t);
     // считаем угол по формуле
     alpha += v / l * dt;
 
@@ -59,9 +61,9 @@ void calculation_function() {
     std::vector<float> my = {0.0f, y_m};
 
     // обновляем график маятника
-    clear_plot("Маятник");
-    add_plot_line("Маятник", mx, my, "Маятник", BLUE, 2.f);
-    add_plot_scatter("Маятник", mx[1], my[1], "Маятник", RED, 6.f);
+    clear_plot("Pendulum");
+    add_plot_line("Pendulum", mx, my, "Pendulum", BLUE, 2.f);
+    add_plot_scatter("Pendulum", mx[1], my[1], "Pendulum", RED, 6.f);
 
 // __ рисуем фазовую диаграмму __   
     // считаем скорость по формуле
@@ -75,21 +77,22 @@ void calculation_function() {
     std::vector<float> y = buffer.getY();
 
     // обновляем график фазовой диаграммы
-    clear_plot("Фазовая диаграмма");
-    add_plot_scatterline("Фазовая диаграмма", x, y, "Фазовая диаграмма", BLUE);
-    add_plot_scatter("Фазовая диаграмма", x[buffer.head], y[buffer.head], "Фазовая диаграмма", RED, 6.f);
+    clear_plot("Phase diagram");
+    add_plot_scatterline("Phase diagram", x, y, "Phase diagram", BLUE);
+    add_plot_scatter("Phase diagram", x[buffer.head], y[buffer.head], "Phase diagram", RED, 6.f);
 }
 
 int main() {
-    if (!init_gui_library("Task_2: Движение маятника", widhtWindow, hieghtWindow)) return -1;
+    if (!init_gui_library("Task_2: The movement of the pendulum", widhtWindow, hieghtWindow)) return -1;
 
-    add_bool_param("Пауза", false);
-    add_button_param("Переинициализация", click_button);
+    add_bool_param("Pause", false);
+    add_button_param("Restart", click_button);
     
-    add_float_param("Скорость", v);
+    add_float_param("Velocity", v);
+    add_float_param("Time", t);
 
-    create_plot("Маятник", scale);
-    create_plot("Фазовая диаграмма", scale);
+    create_plot("Pendulum", scale);
+    create_plot("Phase diagram", scale);
 
     set_calculation_function(calculation_function);
 

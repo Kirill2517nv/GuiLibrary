@@ -1,4 +1,4 @@
-#include "gui_library.h"
+﻿#include "gui_library.h"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
@@ -63,23 +63,11 @@ bool init_gui_library(const std::string& window_title, const int widthWindow, co
         style.Colors[ImGuiCol_WindowBg].w = 1.0f;
     }
 
-    // Загрузка шрифта с поддержкой кириллицы
-    // Пытаемся загрузить системный шрифт с поддержкой кириллицы
     ImFont* font = nullptr;
+    ImFontConfig font_cfg;
+    font_cfg.SizePixels = 20.0f; // Устанавливаем размер 20
     
-    // Попробуем загрузить шрифт из системы Windows
-    font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/arial.ttf", 20.0f);
-    if (!font) {
-        font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/segoeui.ttf", 20.0f);
-    }
-    if (!font) {
-        font = io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/calibri.ttf", 20.0f);
-    }
-    if (!font) {
-        // Если не удалось загрузить системный шрифт, используем встроенный
-        font = io.Fonts->AddFontDefault();
-        std::cerr << "Предупреждение: Не удалось загрузить шрифт с поддержкой кириллицы. Используется стандартный шрифт." << std::endl;
-    }
+    font = io.Fonts->AddFontDefault(&font_cfg);
 
     // Инициализация бэкендов
     ImGui_ImplGlfw_InitForOpenGL(g_window, true);
@@ -103,7 +91,7 @@ bool gui_main_loop() {
     ImGui::DockSpaceOverViewport();
 
     // Левая панель с параметрами
-    ImGui::Begin("Параметры", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+    ImGui::Begin("Parameters", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
     
        // Выполняем функцию расчета если она установлена
     if (g_calculation_function) {
@@ -119,6 +107,7 @@ bool gui_main_loop() {
                 if (param.use_slider) {
                     ImGui::SliderFloat(param.label.c_str(), &param.float_value, 
                                 param.min_value, param.max_value, "%.3f");
+                    
                 } 
                 else {
                     ImGui::InputFloat(param.label.c_str(), &param.float_value, param.step);
@@ -138,7 +127,7 @@ bool gui_main_loop() {
                 break;
             case ParamType::String:
                 char buffer[256];
-                strcpy_s(buffer, param.string_value.c_str());
+                strcpy(buffer, param.string_value.c_str());
                 if (ImGui::InputText(param.label.c_str(), buffer, sizeof(buffer))) {
                     param.string_value = buffer;
                 }
@@ -239,11 +228,11 @@ bool gui_main_loop() {
         }
 
         ImGui::SetNextItemWidth(150.f);
-        ImGui::SliderInt("Ширина", &plot_data.scale.width,
+        ImGui::SliderInt("Width", &plot_data.scale.width, 
                                 100, 1000, "%d");
         ImGui::SameLine();
         ImGui::SetNextItemWidth(150.f);
-        ImGui::SliderInt("Высота", &plot_data.scale.height,
+        ImGui::SliderInt("Height", &plot_data.scale.height, 
                                 100, 1000, "%d");
 
         ImGui::End();
@@ -358,12 +347,12 @@ float get_float_param(const std::string& name) {
     return 0.0f;
 }
 
-// void set_float_param(const std::string& name, float value) {
-//     auto it = g_parameters.find(name);
-//     if (it != g_parameters.end() && it->second.type == ParamType::Bool) {
-//         it->second.float_value = value;
-//     }
-// }
+void set_float_param(const std::string& name, float value) {
+    auto it = g_parameters.find(name);
+    if (it != g_parameters.end() && it->second.type == ParamType::Float) {
+        it->second.float_value = value;
+    }
+}
 
 int get_int_param(const std::string& name) {
     auto it = g_parameters.find(name);
@@ -371,6 +360,14 @@ int get_int_param(const std::string& name) {
         return it->second.int_value;
     }
     return 0;
+}
+
+void set_int_param(const std::string& name, int value)
+{
+    auto it = g_parameters.find(name);
+	if (it != g_parameters.end() && it->second.type == ParamType::Int) {
+		it->second.int_value = value;
+	}
 }
 
 bool get_bool_param(const std::string& name) {
@@ -396,6 +393,13 @@ std::string get_string_param(const std::string& name) {
     return "";
 }
 
+void set_string_param(const std::string& name, const std::string& value)
+{
+	auto it = g_parameters.find(name);
+	if (it != g_parameters.end() && it->second.type == ParamType::String) {
+		it->second.string_value = value;
+	}
+}
 
 
 // === ФУНКЦИИ ДЛЯ РАБОТЫ С ГРАФИКАМИ ===
@@ -505,9 +509,6 @@ void set_calculation_function(std::function<void()> calc_func) {
 
 // === УТИЛИТЫ ===
 
-std::vector<float> create_data_array(int size) {
-    return std::vector<float>(size, 0.0f);
-}
 
 void sleep_ms(int milliseconds) {
     std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));

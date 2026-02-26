@@ -1,14 +1,6 @@
 # GUI Library для численного моделирования
 
-Простая графическая библиотека на C++ для школьников, изучающих численное моделирование. Использует ImGui (ветка `docking`) и ImPlot для создания интерактивных графиков и параметров. Сборка осуществляется без vcpkg — через git submodules.
-
-## Особенности
-
-- **Простой API** — минимум ООП, максимум функций
-- **Лямбда-функции** для расчетов
-- **Докируемые окна** — левая панель с параметрами, правая с графиками
-- **Реальное время** — обновление графиков в реальном времени
-- **Простота использования** — идеально для школьников
+Простая графическая библиотека на C++. Использует ImGui (ветка `docking`) и ImPlot для создания интерактивных графиков и параметров. Сборка осуществляется через git submodules.
 
 ## Структура проекта
 
@@ -19,16 +11,14 @@ GuiLibrary/
 │   └── gui_library.h       # Заголовочный файл библиотеки
 ├── src/
 │   └── gui_library.cpp     # Реализация библиотеки
-├── examples/
-│   ├── simple_example.cpp  # Простой пример (синусоида)
-│   ├── animation_example.cpp # Пример с анимацией
-│   ├── school_example.cpp  # Пример для школьников
-│   └── docking_test.cpp    # Тест докинга
+├── Task_0/
+│   ├── CMakeLists.txt  
+│   └── main.cpp # Пример с анимацией
 ├── external/
 │   ├── glfw/               # Сабмодуль GLFW
 │   ├── imgui/              # Сабмодуль ImGui (ветка docking)
-│   └── implot/             # Сабмодуль ImPlot
-└── resources/              # Ресурсы
+│   └── implot/             # Сабмодуль ImPlot         
+├── README.md   
 ```
 
 ## Быстрый старт (Windows 10/11, Visual Studio 2022)
@@ -59,49 +49,25 @@ cd GuiLibrary
 Проект использует сабмодули `GLFW`, `ImGui`, `ImPlot`. Для `ImGui` автоматически используется ветка `docking` (зафиксировано в `.gitmodules`). Выполните:
 
 ```powershell
-# Синхронизация настроек сабмодулей (на случай изменений)
-git submodule sync --recursive
-
 # Инициализация и обновление сабмодулей согласно .gitmodules
 git submodule update --init --recursive
-
-# Явная установка ветки docking для ImGui и получение последних изменений
-git -C external/imgui fetch origin docking
-git -C external/imgui checkout docking
-git -C external/imgui pull --ff-only origin docking
 ```
-
-Проверить активную ветку ImGui:
-
-```powershell
-git -C external/imgui status
-```
-
-Ожидаемо: `On branch docking`.
 
 ### 4) Конфигурация CMake (Visual Studio 2022, x64)
 
 ```powershell
-cmake -B build -S . -G "Visual Studio 17 2022" -A x64
+mkdir build 
+cd build
+cmake ..
 ```
 
-Если CMake нашёл OpenGL (`opengl32`) и добавил цели `glfw`, `imgui`, `implot`, конфигурация прошла успешно.
-
-### 5) Сборка
+### 5) Запуск примеров
 
 ```powershell
-cmake --build build --config Release
-```
-
-После сборки исполняемые файлы появятся в `build\Release\`.
-
-### 6) Запуск примеров
-
-```powershell
-.\n+build\Release\simple_example.exe
-build\Release\animation_example.exe
-build\Release\school_example.exe
-build\Release\docking_test.exe
+build\Task_0\Release\Task_0.exe
+build\Task_1\Release\Task_1.exe
+build\Task_2\Release\Task_2.exe
+build\Task_3\Release\Task_3.exe
 ```
 
 ## Требования
@@ -113,19 +79,6 @@ build\Release\docking_test.exe
 - ImGui (ветка `docking`, сабмодуль)
 - ImPlot (сабмодуль)
 
-## Устранение проблем
-
-- «CMake не видит OpenGL»: убедитесь, что система — Windows 10/11; обычно находится как `opengl32` автоматически.
-- «Сабмодули пустые или не скачались»: повторите команды инициализации:
-  ```powershell
-  git submodule sync --recursive
-  git submodule update --init --recursive
-  git -C external/imgui fetch origin docking
-  git -C external/imgui checkout docking
-  git -C external/imgui pull --ff-only origin docking
-  ```
-- «Ошибки линковки GLFW/ImGui»: убедитесь, что `external/glfw`, `external/imgui`, `external/implot` содержат исходники, а CMake конфигурация прошла без ошибок.
-
 ## API библиотеки
 
 ### Инициализация
@@ -134,7 +87,7 @@ build\Release\docking_test.exe
 #include "gui_library.h"
 
 // Инициализация
-if (!init_gui_library("Мой проект")) {
+if (!init_gui_library("My project")) {
     return -1;
 }
 ```
@@ -143,16 +96,16 @@ if (!init_gui_library("Мой проект")) {
 
 ```cpp
 // Числовой параметр
-add_float_param("mass", "Масса", 1.0f, 0.1f, 10.0f, 0.1f);
+add_float_param("mass", 1.0f, 0.1f, 10.0f, 0.1f);
 
 // Целочисленный параметр
-add_int_param("steps", "Количество шагов", 100, 10, 1000, 10);
+add_int_param("steps", 100, 10, 1000, 10);
 
 // Логический параметр
-add_bool_param("show_grid", "Показать сетку", true);
+add_bool_param("show_grid", true);
 
 // Строковый параметр
-add_string_param("title", "Заголовок", "Мой график");
+add_string_param("title", "My graph");
 ```
 
 ### Получение значений параметров
@@ -168,21 +121,32 @@ std::string title = get_string_param("title");
 
 ```cpp
 // Создание графика
-create_plot("Мой график", "Заголовок");
+create_plot("Graph", scale);
 
 // Добавление данных
 std::vector<float> x = {1, 2, 3, 4, 5};
 std::vector<float> y = {1, 4, 9, 16, 25};
-add_plot_data("Мой график", x, y, "y = x²");
+
+// Добавление точки на график:
+add_plot_scatter("Graph", x[0], y[0], "y = x²", RED); // В скобках указываются по порядку: название графика, значение по оси X, значение по оси Y, название отрисованного объекта, цвет объекта на графике
+
+// Добавление линии из точек на график:
+add_plot_scatterline("Graph", x, y, "y = x²", BLUE); 
+
+// Координаты точек (0, 0) и (5, 7) 
+std::vector<float> coordX = {0.0f, 5.0f};
+std::vector<float> coordY = {0.0f, 7.0f};
+// Добавление отрезка на график:
+add_plot_line("Graph", coordX, coordY, "section", WHITE); 
 
 // Очистка графика
-clear_plot("Мой график");
+clear_plot("Graph");
 ```
 
-### Функция расчета (лямбда)
+### Функция расчета 
 
 ```cpp
-auto calc_function = []() {
+void calc_function() {
     // Получаем параметры
     float mass = get_float_param("mass");
     int steps = get_int_param("steps");
@@ -199,8 +163,8 @@ auto calc_function = []() {
     }
     
     // Обновляем график
-    clear_plot("Мой график");
-    add_plot_data("Мой график", x_values, y_values, "Результат");
+    clear_plot("Graph");
+    add_plot_data("Graph", x_values, y_values, "Result", RED);
 };
 
 // Устанавливаем функцию расчета
@@ -219,24 +183,6 @@ while (gui_main_loop()) {
 shutdown_gui_library();
 ```
 
-## Примеры использования
-
-### 1. Простая синусоида
-
-См. `examples/simple_example.cpp` - демонстрирует:
-- Добавление параметров
-- Создание графика
-- Использование лямбда-функции для расчетов
-
-### 2. Анимированная волна
-
-См. `examples/animation_example.cpp` - демонстрирует:
-- Анимацию в реальном времени
-- Использование времени
-- Интерактивные параметры
-
-## Для школьников
-
 ### Как добавить новый параметр:
 
 1. **Определите тип параметра:**
@@ -245,9 +191,9 @@ shutdown_gui_library();
    - `add_bool_param()` - для да/нет
    - `add_string_param()` - для текста
 
-2. **Укажите имя и описание:**
+2. **Укажите имя и название переменной:**
    ```cpp
-   add_float_param("speed", "Скорость движения", 1.0f);
+   add_float_param("speed", speed);
    ```
 
 3. **Получите значение в функции расчета:**
@@ -257,8 +203,12 @@ shutdown_gui_library();
 
 ### Как написать функцию расчета:
 
-1. **Создайте лямбда-функцию:**
+1. **Создайте функцию или лямбда-функцию:**
    ```cpp
+   void my_calc() {
+       // Ваш код здесь
+   };
+
    auto my_calc = []() {
        // Ваш код здесь
    };
@@ -285,15 +235,11 @@ shutdown_gui_library();
 
 5. **Обновите график:**
    ```cpp
-   clear_plot("График");
-   add_plot_data("График", x_values, y_values, "Мои данные");
+   clear_plot("Graph");
+   add_plot_scatterline("Graph", x_values, y_values, "Sin", BLUE);
    ```
 
 6. **Установите функцию:**
    ```cpp
    set_calculation_function(my_calc);
    ```
-
-## Лицензия
-
-MIT License

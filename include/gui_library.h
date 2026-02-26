@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "imgui.h"
 #include <string>
 #include <vector>
@@ -14,9 +14,8 @@
 #define BLACK ImVec4(0.0f, 0.0f, 0.0f, 1.0f)
 #define WHITE ImVec4(1.0f, 1.0f, 1.0f, 1.0f)
 
-// Простой API для школьников - никаких классов, только функции и лямбды
 
-class DataBuffer {
+class DataArray {
 public:
     std::vector<float> x;   // массив X (время в пределах окна)
     std::vector<float> y;   // массив значений функции
@@ -25,7 +24,7 @@ public:
     float window;           // ширина окна по X
 
 
-    DataBuffer(float windowWidth, size_t points = 200, float x_0 = 0.0f, float y_0 = 0.0f)
+    DataArray(float windowWidth, size_t points = 200, float x_0 = 0.0f, float y_0 = 0.0f)
         : maxSize(points), head(0), window(windowWidth)
     {
         x.resize(points, x_0);
@@ -34,10 +33,8 @@ public:
 
     void addPoint(float t, float value) {
         head = (head + 1) % maxSize;
-        // отображаем время в окно [0, window)
-        float t_window = fmod(t, window);
 
-        x[head] = t_window;
+        x[head] = window == 0.f ? t: fmod(t, window);
         y[head] = value;
     }
 
@@ -217,32 +214,35 @@ void add_bool_param(const std::string& name, bool initial_value = false);
 
 // Добавить параметр типа string
 void add_string_param(const std::string& name, const std::string& initial_value = "");
-
+// Добавить параметр типа button
 void add_button_param(const std::string& name, std::function<void()> function);
 
 // Получить значение параметра
 float get_float_param(const std::string& name);
+
+void set_float_param(const std::string& name, float value);
 int get_int_param(const std::string& name);
+
+void set_int_param(const std::string& name, int value);
 bool get_bool_param(const std::string& name);
 void set_bool_param(const std::string& name, bool value);
-std::string get_string_param(const bool& name);  
+std::string get_string_param(const std::string& name);
+
+void set_string_param(const std::string& name, const std::string& value);
 
 // === ФУНКЦИИ ДЛЯ РАБОТЫ С ГРАФИКАМИ ===
 
 // Создать новый график
 void create_plot(const std::string& name, const Scale& scale);
 
-// Добавить данные на график
-// void add_plot_data(const std::string& plot_name, const std::vector<float>& x, const std::vector<float>& y, const Scale& scale,
-//                   const std::string& label = "Данные", const size_t step = 0);
-
+//Нарисовать точку
 void add_plot_scatter(const std::string& plot_name, const float& x, const float& y, 
                     const std::string& label = "Данные", const ImVec4& color = BLACK, const float& size = 1.0f);
-
+//Нарисовать линию из точек
 void add_plot_scatterline(const std::string& plot_name, const std::vector<float>& x, const std::vector<float>& y, 
                     const std::string& label = "Данные", const ImVec4& color = BLACK, const float& size = 1.0f);
-
-void add_plot_line(const std::string& plot_name, const std::vector<float>& x, const std::vector<float>& y,
+//Нарисовать сплошную линию
+void add_plot_line(const std::string& plot_name, const std::vector<float>& x, const std::vector<float>& y, 
                     const std::string& label = "Данные", const ImVec4& color = BLUE, const float& size = 1.0f);
 
 void add_plot_heatmap(const std::string& plot_name,
@@ -264,13 +264,10 @@ void set_calculation_function(std::function<void()> calc_func);
 // Функция для получения размера массива данных графика
 int get_plot_data_size(const std::string& plot_name);
 
-// Функция для заполнения данных графика (для школьников)
+// Функция для заполнения данных графика 
 void fill_plot_data(const std::string& plot_name, int index, float x, float y);
 
 // === УТИЛИТЫ ===
-
-// Создать массив для заполнения данными
-std::vector<float> create_data_array(int size);
 
 // Функция для паузы (для анимации)
 void sleep_ms(int milliseconds);
