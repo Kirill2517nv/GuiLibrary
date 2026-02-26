@@ -57,6 +57,18 @@ void calculation_function(){
 
     // увеличиваем время на шаг по времени dt
     t += dt;
+ 
+    std::vector<float> values(hm_rows * hm_cols);
+    for (int r = 0; r < hm_rows; ++r) {
+        for (int c = 0; c < hm_cols; ++c) {
+            float x = hm_scale.x_min + (hm_scale.x_max - hm_scale.x_min) * c / (hm_cols - 1);
+            values[r * hm_cols + c] = (float)sin(x - t);
+        }
+    }
+    clear_plot("Heatmap");
+    add_plot_heatmap("Heatmap", values, hm_rows, hm_cols,
+        "sin(x)", -1.0, 1.0);
+    
 
     // считаем координаты тела по формулам
     float x = x_0 + V * cos(alpha * M_PI / 180.) * t;  
@@ -109,18 +121,8 @@ int main() {
     create_plot("Movement at an angle", scale);
 
     // Heatmap: синус по оси X
-    create_plot("Heatmap синус", hm_scale);
-    {
-        std::vector<float> values(hm_rows * hm_cols);
-        for (int r = 0; r < hm_rows; ++r) {
-            for (int c = 0; c < hm_cols; ++c) {
-                float x = hm_scale.x_min + (hm_scale.x_max - hm_scale.x_min) * c / (hm_cols - 1);
-                values[r * hm_cols + c] = (float)sin(x);
-            }
-        }
-        add_plot_heatmap("Heatmap синус", values, hm_rows, hm_cols,
-                         "sin(x)", -1.0, 1.0);
-    }
+    create_plot("Heatmap", hm_scale);
+    
 
     set_calculation_function(calculation_function);
 
