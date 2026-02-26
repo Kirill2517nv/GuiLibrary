@@ -115,6 +115,28 @@ struct FillLine {
     }
 };
 
+struct Heatmap {
+    std::vector<float> values;     // данные row-major (rows * cols)
+    int rows = 0;
+    int cols = 0;
+    double scale_min = 0.0;        // 0 = авто
+    double scale_max = 0.0;        // 0 = авто
+    std::string label;
+    bool visible = true;
+    int colormap = 4;              // ImPlotColormap_Viridis
+    std::string label_fmt; // пустая строка = без подписей ячеек (по умолчанию)
+
+    void clear() {
+        values.clear();
+        rows = 0; cols = 0;
+        scale_min = 0.0; scale_max = 0.0;
+        label.clear();
+        visible = true;
+        colormap = 4;
+        label_fmt.clear();
+    }
+};
+
 // Структура для хранения данных масштаба
 struct Scale {
     int width;
@@ -133,6 +155,7 @@ struct PlotData {
     std::vector<Scatter> scatterVector;
     std::vector<ScatterLine> scatterlineVector;
     std::vector<FillLine> lineVector;
+    std::vector<Heatmap> heatmapVector;
     Scale scale;
 
     PlotData() = default;
@@ -144,6 +167,8 @@ struct PlotData {
         for (auto& sl : scatterlineVector) sl.clear();
 
         for (auto& l : lineVector) l.clear();
+
+        for (auto& h : heatmapVector) h.clear();
 
     }
 };
@@ -217,8 +242,16 @@ void add_plot_scatter(const std::string& plot_name, const float& x, const float&
 void add_plot_scatterline(const std::string& plot_name, const std::vector<float>& x, const std::vector<float>& y, 
                     const std::string& label = "Данные", const ImVec4& color = BLACK, const float& size = 1.0f);
 
-void add_plot_line(const std::string& plot_name, const std::vector<float>& x, const std::vector<float>& y, 
+void add_plot_line(const std::string& plot_name, const std::vector<float>& x, const std::vector<float>& y,
                     const std::string& label = "Данные", const ImVec4& color = BLUE, const float& size = 1.0f);
+
+void add_plot_heatmap(const std::string& plot_name,
+                      const std::vector<float>& values,
+                      int rows, int cols,
+                      const std::string& label = "Heatmap",
+                      double scale_min = 0.0, double scale_max = 0.0,
+                      int colormap = 4,
+                      const std::string& label_fmt = "");
 
 // Очистить график
 void clear_plot(const std::string& plot_name);

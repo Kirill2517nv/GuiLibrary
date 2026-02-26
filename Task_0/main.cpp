@@ -23,6 +23,11 @@ std::vector<float> target_y = {3.0, 3.5};
 DataBuffer buffer(100, 20000, x_0, y_0); // создание объекта
 Scale scale(700, 700, -0.1f, 10.f, -0.1f, 5.f); // создание объекта для задания шкалы
 
+// Параметры heatmap-синуса
+const int hm_rows = 50;
+const int hm_cols = 100;
+Scale hm_scale(700, 400, 0.f, 2.f * (float)M_PI, 0.f, 1.f);
+
 void click_button() {
     // инициализируем параметры
     alpha = get_float_param("Угол");
@@ -96,6 +101,20 @@ int main() {
     add_float_param("y_0", y_0);
 
     create_plot("Движение под углом", scale);
+
+    // Heatmap: синус по оси X
+    create_plot("Heatmap синус", hm_scale);
+    {
+        std::vector<float> values(hm_rows * hm_cols);
+        for (int r = 0; r < hm_rows; ++r) {
+            for (int c = 0; c < hm_cols; ++c) {
+                float x = hm_scale.x_min + (hm_scale.x_max - hm_scale.x_min) * c / (hm_cols - 1);
+                values[r * hm_cols + c] = (float)sin(x);
+            }
+        }
+        add_plot_heatmap("Heatmap синус", values, hm_rows, hm_cols,
+                         "sin(x)", -1.0, 1.0);
+    }
 
     set_calculation_function(calculation_function);
 

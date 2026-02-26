@@ -158,15 +158,51 @@ bool gui_main_loop() {
 
     for (auto& [plot_name, plot_data] : g_plots) {
         ImGui::Begin(plot_name.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+
+        bool has_heatmap = !plot_data.heatmapVector.empty();
+        int heatmap_colormap = has_heatmap ? plot_data.heatmapVector[0].colormap : 0;
+        if (has_heatmap) {
+            ImPlot::PushColormap(heatmap_colormap);
+        }
+
         ImPlot::SetNextAxesLimits(plot_data.scale.x_min, plot_data.scale.x_max, plot_data.scale.y_min, plot_data.scale.y_max, ImGuiCond_FirstUseEver);
         if (ImPlot::BeginPlot(plot_name.c_str(), ImVec2(plot_data.scale.width, plot_data.scale.height))) {
+            // Heatmap рисуется первым — как фон
+            for (auto& hm : plot_data.heatmapVector) {
+                if (hm.visible && !hm.values.empty() && hm.rows > 0 && hm.cols > 0) {
+                    const char* fmt = hm.label_fmt.empty() ? nullptr : hm.label_fmt.c_str();
+                    // Y-bounds перевёрнуты: row 0 → низ графика (левый нижний угол = [0,0])
+                    ImPlot::PlotHeatmap(hm.label.c_str(),
+                                        hm.values.data(),
+                                        hm.rows, hm.cols,
+                                        hm.scale_min, hm.scale_max,
+                                        fmt,
+                                        ImPlotPoint(plot_data.scale.x_min, plot_data.scale.y_max),
+                                        ImPlotPoint(plot_data.scale.x_max, plot_data.scale.y_min));
+
+                    // Тултип при наведении
+                    if (ImPlot::IsPlotHovered()) {
+                        ImPlotPoint mouse = ImPlot::GetPlotMousePos();
+                        double x_range = plot_data.scale.x_max - plot_data.scale.x_min;
+                        double y_range = plot_data.scale.y_max - plot_data.scale.y_min;
+                        int col = (int)((mouse.x - plot_data.scale.x_min) / x_range * hm.cols);
+                        int row = (int)((mouse.y - plot_data.scale.y_min) / y_range * hm.rows);
+                        if (col >= 0 && col < hm.cols && row >= 0 && row < hm.rows) {
+                            float val = hm.values[row * hm.cols + col];
+                            ImGui::BeginTooltip();
+                            ImGui::Text("[%d, %d] = %.3f", row, col, val);
+                            ImGui::EndTooltip();
+                        }
+                    }
+                }
+            }
+
             for (auto& line_data : plot_data.lineVector) {
                     ImPlot::SetNextLineStyle(line_data.color, line_data.size);
-                    ImPlot::PlotLine(line_data.label.c_str(), 
-                                        line_data.x_values.data(), 
-                                        line_data.y_values.data(), 
+                    ImPlot::PlotLine(line_data.label.c_str(),
+                                        line_data.x_values.data(),
+                                        line_data.y_values.data(),
                                         line_data.x_values.size());
-                                        
             }
 
             for (auto& scatterline_data : plot_data.scatterlineVector) {
@@ -174,34 +210,42 @@ bool gui_main_loop() {
                         double x = scatterline_data.x_values[i];
                         double y = scatterline_data.y_values[i];
 
-                        ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle, scatterline_data.size, 
+                        ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle, scatterline_data.size,
                                                 scatterline_data.color,
-                                                IMPLOT_AUTO, 
-                                                scatterline_data.color); 
+                                                IMPLOT_AUTO,
+                                                scatterline_data.color);
                         ImPlot::PlotScatter(scatterline_data.label.c_str(), &x, &y, 1);
-                        
-                    }                       
+                    }
             }
 
             for (auto& scatter_data : plot_data.scatterVector) {
                     float x = scatter_data.x_values;
                     float y = scatter_data.y_values;
-                    ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle, scatter_data.size, 
-                                                        scatter_data.color,  // красная заливка
-                                                        IMPLOT_AUTO, 
-                                                        scatter_data.color); // чёрная обводка
-                    ImPlot::PlotScatter(scatter_data.label.c_str(), &x, &y, 1);                     
+                    ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle, scatter_data.size,
+                                                        scatter_data.color,
+                                                        IMPLOT_AUTO,
+                                                        scatter_data.color);
+                    ImPlot::PlotScatter(scatter_data.label.c_str(), &x, &y, 1);
             }
+
             ImPlot::EndPlot();
         }
+
+        if (has_heatmap) {
+            auto& hm = plot_data.heatmapVector[0];
+            ImGui::SameLine();
+            ImPlot::ColormapScale("##Scale", hm.scale_min, hm.scale_max, ImVec2(60, (float)plot_data.scale.height));
+            ImPlot::PopColormap();
+        }
+
         ImGui::SetNextItemWidth(150.f);
-        ImGui::SliderInt("Ширина", &plot_data.scale.width, 
+        ImGui::SliderInt("Ширина", &plot_data.scale.width,
                                 100, 1000, "%d");
         ImGui::SameLine();
         ImGui::SetNextItemWidth(150.f);
-        ImGui::SliderInt("Высота", &plot_data.scale.height, 
+        ImGui::SliderInt("Высота", &plot_data.scale.height,
                                 100, 1000, "%d");
-                                
+
         ImGui::End();
     }
     
@@ -399,6 +443,28 @@ void add_plot_line(const std::string& plot_name, const std::vector<float>& x, co
         data.color = color;
         data.size = size;
         it->second.lineVector.push_back(data);
+    }
+}
+
+void add_plot_heatmap(const std::string& plot_name,
+                      const std::vector<float>& values,
+                      int rows, int cols,
+                      const std::string& label,
+                      double scale_min, double scale_max,
+                      int colormap,
+                      const std::string& label_fmt) {
+    auto it = g_plots.find(plot_name);
+    if (it != g_plots.end()) {
+        Heatmap data;
+        data.values = values;
+        data.rows = rows;
+        data.cols = cols;
+        data.label = label;
+        data.scale_min = scale_min;
+        data.scale_max = scale_max;
+        data.colormap = colormap;
+        data.label_fmt = label_fmt;
+        it->second.heatmapVector.push_back(data);
     }
 }
 

@@ -71,3 +71,5 @@ Thumbs.db
 # Dependencies (optional - uncomment if you don't want to include external libraries)
 # external/imgui/
 # external/implot/
+
+CLAUDE.md
