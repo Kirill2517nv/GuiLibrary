@@ -154,7 +154,12 @@ bool gui_main_loop() {
             ImPlot::PushColormap(heatmap_colormap);
         }
 
-        ImPlot::SetNextAxesLimits(plot_data.scale.x_min, plot_data.scale.x_max, plot_data.scale.y_min, plot_data.scale.y_max, ImGuiCond_FirstUseEver);
+        ImGuiCond cond = ImGuiCond_FirstUseEver;
+        if (plot_data.scale_dirty) {
+            cond = ImGuiCond_Always;
+            plot_data.scale_dirty = false;
+        }
+        ImPlot::SetNextAxesLimits(plot_data.scale.x_min, plot_data.scale.x_max, plot_data.scale.y_min, plot_data.scale.y_max, cond);
         if (ImPlot::BeginPlot(plot_name.c_str(), ImVec2(plot_data.scale.width, plot_data.scale.height))) {
             // Heatmap рисуется первым — как фон
             for (auto& hm : plot_data.heatmapVector) {
@@ -408,7 +413,18 @@ void create_plot(const std::string& name, const Scale& scale) {
     g_plots[name] = PlotData(scale);
 }
 
-void add_plot_scatter(const std::string& plot_name, const float& x, const float& y, 
+void set_plot_scale(const std::string& name, float x_min, float x_max, float y_min, float y_max) {
+    auto it = g_plots.find(name);
+    if (it != g_plots.end()) {
+        it->second.scale.x_min = x_min;
+        it->second.scale.x_max = x_max;
+        it->second.scale.y_min = y_min;
+        it->second.scale.y_max = y_max;
+        it->second.scale_dirty = true;
+    }
+}
+
+void add_plot_scatter(const std::string& plot_name, const float& x, const float& y,
                     const std::string& label, const ImVec4& color, const float& size) {
     auto it = g_plots.find(plot_name);
     if (it != g_plots.end()) {

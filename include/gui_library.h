@@ -6,6 +6,7 @@
 #include <memory>
 #include <deque>
 #include <iostream>
+#include <cmath>
 
 #define RED ImVec4(1.0f, 0.0f, 0.0f, 1.0f)
 #define BLUE ImVec4(0.0f, 0.0f, 1.0f, 1.0f)
@@ -154,19 +155,16 @@ struct PlotData {
     std::vector<FillLine> lineVector;
     std::vector<Heatmap> heatmapVector;
     Scale scale;
+    bool scale_dirty = false;
 
     PlotData() = default;
     PlotData(const Scale& scale_) : scale(scale_) {}
 
     void clear() {
-        for (auto& s : scatterVector) s.clear();
-
-        for (auto& sl : scatterlineVector) sl.clear();
-
-        for (auto& l : lineVector) l.clear();
-
-        for (auto& h : heatmapVector) h.clear();
-
+        scatterVector.clear();
+        scatterlineVector.clear();
+        lineVector.clear();
+        heatmapVector.clear();
     }
 };
 
@@ -234,6 +232,9 @@ void set_string_param(const std::string& name, const std::string& value);
 
 // Создать новый график
 void create_plot(const std::string& name, const Scale& scale);
+
+// Обновить границы осей графика (применяется на следующем кадре)
+void set_plot_scale(const std::string& name, float x_min, float x_max, float y_min, float y_max);
 
 //Нарисовать точку
 void add_plot_scatter(const std::string& plot_name, const float& x, const float& y, 

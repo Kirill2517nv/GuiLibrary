@@ -1,4 +1,4 @@
-#include "gui_library.h"
+﻿#include "gui_library.h"
 #include <cmath>
 #include <vector>
 #include <cstdlib>
@@ -27,6 +27,10 @@ double E_kin = 0, U_pot = 0;
 double T_inst = 0, P_inst = 0;
 double virial_sum = 0;
 double U_shift = 0;
+
+// Термостат Берендсена
+double T_target = 0.5;
+double tau_T = 0.1; // время релаксации (в единицах времени симуляции)
 
 // Усреднение T и P (кумулятивное)
 double T_accum = 0, P_accum = 0;
@@ -243,7 +247,17 @@ void init_N_particles() {
     for (int i = 0; i < N; i++) { prtcls[i].ax = prtcls[i].ax_new; prtcls[i].ay = prtcls[i].ay_new; }
     clear_plot_data();
 
-    // Обновить отображение плотности
+    // Сброс отображаемых параметров
+    E_kin = 0; U_pot = 0; T_inst = 0; P_inst = 0;
+    T_avg = 0; P_avg = 0;
+    set_float_param("Time", 0.0f);
+    set_float_param("E_kin", 0.0f);
+    set_float_param("U", 0.0f);
+    set_float_param("E_total", 0.0f);
+    set_float_param("T inst", 0.0f);
+    set_float_param("T avg", 0.0f);
+    set_float_param("P inst", 0.0f);
+    set_float_param("P avg", 0.0f);
     set_float_param("Density", static_cast<float>(N / (Lx * Ly)));
 }
 
@@ -257,12 +271,32 @@ void calculation_function() {
         compute_forces();
         update_velocities();
 
+        // Термостат Берендсена
+        if (get_bool_param("Thermostat")) {
+            T_target = get_float_param("T0");
+            tau_T = get_float_param("tau");
+            double T_now = measure_temperature();
+            if (T_now > 1e-12) {
+                double lambda = sqrt(1.0 + (dt / tau_T) * (T_target / T_now - 1.0));
+                for (int i = 0; i < N; i++) {
+                    prtcls[i].vx *= lambda;
+                    prtcls[i].vy *= lambda;
+                }
+            }
+        }
+
         t_sim += dt;
         step_count++;
 
         E_kin = compute_ekin();
         T_inst = measure_temperature();
         P_inst = compute_pressure();
+
+        // Если NaN — ставим на паузу, дальше считать бессмысленно
+        if (std::isnan(E_kin) || std::isnan(T_inst)) {
+            set_bool_param("Pause", true);
+            return;
+        }
 
         // Кумулятивное усреднение
         avg_samples++;
@@ -305,6 +339,47 @@ void calculation_function() {
         add_plot_line("Pressure", plot_time, plot_P_avg, "P avg", RED, 2.0f);
     }
 
+    // Автоскролл: текущее время по центру, окно = 10 единиц
+    if (!plot_time.empty()) {
+        float t_now = plot_time.back();
+        float window = 10.0f;
+        float x_min = t_now - window / 2.0f;
+        float x_max = t_now + window / 2.0f;
+
+        // Энергия: auto-fit по Y из видимых данных
+        float e_min = 1e30f, e_max = -1e30f;
+        for (size_t i = 0; i < plot_time.size(); i++) {
+            if (plot_time[i] >= x_min && plot_time[i] <= x_max) {
+                e_min = std::min({e_min, plot_ekin[i], plot_u[i], plot_etotal[i]});
+                e_max = std::max({e_max, plot_ekin[i], plot_u[i], plot_etotal[i]});
+            }
+        }
+        float e_margin = (e_max - e_min) * 0.1f + 0.1f;
+        set_plot_scale("Energy", x_min, x_max, e_min - e_margin, e_max + e_margin);
+
+        // Температура
+        float t_min_v = 1e30f, t_max_v = -1e30f;
+        for (size_t i = 0; i < plot_time.size(); i++) {
+            if (plot_time[i] >= x_min && plot_time[i] <= x_max) {
+                t_min_v = std::min({t_min_v, plot_T[i], plot_T_avg[i]});
+                t_max_v = std::max({t_max_v, plot_T[i], plot_T_avg[i]});
+            }
+        }
+        float t_margin = (t_max_v - t_min_v) * 0.1f + 0.01f;
+        set_plot_scale("Temperature", x_min, x_max, t_min_v - t_margin, t_max_v + t_margin);
+
+        // Давление
+        float p_min_v = 1e30f, p_max_v = -1e30f;
+        for (size_t i = 0; i < plot_time.size(); i++) {
+            if (plot_time[i] >= x_min && plot_time[i] <= x_max) {
+                p_min_v = std::min({p_min_v, plot_P[i], plot_P_avg[i]});
+                p_max_v = std::max({p_max_v, plot_P[i], plot_P_avg[i]});
+            }
+        }
+        float p_margin = (p_max_v - p_min_v) * 0.1f + 0.01f;
+        set_plot_scale("Pressure", x_min, x_max, p_min_v - p_margin, p_max_v + p_margin);
+    }
+
     // Частицы
     clear_plot("Particles");
     for (int i = 0; i < N; i++) {
@@ -326,7 +401,7 @@ void calculation_function() {
 }
 
 int main() {
-    if (!init_gui_library("MD Test", 1400, 900)) return -1;
+    if (!init_gui_library("MD Test", 1600, 1200)) return -1;
 
     add_int_param("Steps/frame", 20, 1, 200, 5);
     add_bool_param("Pause", false);
@@ -335,6 +410,10 @@ int main() {
     add_int_param("N", 50, 2, 500, 1);
     add_float_param("L", 13.0f, 3.0f, 50.0f, 0.5f);
     add_float_param("T0", 0.5f, 0.05f, 3.0f, 0.05f);
+
+    // Термостат
+    add_bool_param("Thermostat", true);
+    add_float_param("tau", 0.1f, 0.01f, 5.0f, 0.01f);
 
     // Параметр для теста двух частиц
     add_float_param("r0", 1.5f, 0.5f, 3.0f, 0.01f, true);
@@ -356,9 +435,9 @@ int main() {
 
     // Графики
     create_plot("Particles", Scale(500, 500, 0.f, 15.f, 0.f, 15.f));
-    create_plot("Energy", Scale(600, 250, 0.f, 5.f, -100.f, 100.f));
-    create_plot("Temperature", Scale(600, 250, 0.f, 5.f, 0.f, 2.f));
-    create_plot("Pressure", Scale(600, 250, 0.f, 5.f, -2.f, 2.f));
+    create_plot("Energy", Scale(600, 300, 0.f, 5.f, -100.f, 100.f));
+    create_plot("Temperature", Scale(600, 300, 0.f, 5.f, 0.f, 2.f));
+    create_plot("Pressure", Scale(600, 300, 0.f, 5.f, -2.f, 2.f));
 
     init_test_free();
     set_calculation_function(calculation_function);

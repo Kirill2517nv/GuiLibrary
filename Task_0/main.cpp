@@ -1,131 +1,164 @@
 ﻿#include "gui_library.h"
 #include <vector>
 #include <cmath>
-
-#ifndef M_PI
-#define M_PI 3.14159265358979323846 
-#endif
+#include <algorithm>
 
 int widhtWindow = 1200; // ширина окна
-int hieghtWindow = 800; // высота окна
+int hieghtWindow = 1000; // высота окна
 
-float t = 0.0f; // время
-float dt = 0.01f;  // шаг по времени
-float x_0 = 0.0f, y_0 = 0.0f; // начальные координаты тела
-float V = 8.f; // начальная скорость тела
-float g = 9.8f;      // модуль ускорения свободного падения 
-float alpha = 45.f; // начальный угол наклона
+const int Nx = 100;          // ширина решетки
+const int Ny = 100;          // высота решетки
+const int Q = 9;             // количество скоросте
 
+float tau = 1.0;             // время релаксации
 
-std::vector<float> target_x = {8., 8.}; // X координаты мишени
-std::vector<float> target_y = {2.0, 3.}; // Y координаты мишени
+// Дискретные скорости
+int Cx[Q] = { 0, 1, 0, -1, 0, 1, -1, -1, 1 };
+int Cy[Q] = { 0, 0, 1, 0, -1, 1, 1, -1, -1 };
 
-// Параметры heatmap-синуса
-const int hm_rows = 50;
-const int hm_cols = 100;
-Scale hm_scale(700, 400, 0.f, 2.f * (float)M_PI, 0.f, 1.f);
+// Весовые коэффициенты
+float Wk[Q] = { 4.0f / 9.0f,               // нулевая скорость
+               1.0f / 9.0f, 1.0f / 9.0f,    // скорости по осям
+               1.0f / 9.0f, 1.0f / 9.0f,
+               1.0f / 36.0f, 1.0f / 36.0f,  // диагональные скорости
+               1.0f / 36.0f, 1.0f / 36.0f };
 
-// объект для хранения точек для отрисовки
-DataArray buffer(0, 2000, x_0, y_0); //аргументы (ширина зацикливания, кол-во точек, начальные координаты)
-// создание объекта для задания шкалы
-Scale scale(800, 700, -0.1f, 10.f, -0.1f, 5.f); //аргументы (ширина графика, высота графика, минимальное значение X, максимальное значение X, минимальное значение Y, максимальное значение Y)
+// Массивы распределений
+float f[Nx * Ny * Q];           // текущие распределения
+std::vector<float> rho(Nx* Ny);             // плотность
+std::vector<float> ux(Nx* Ny);              // скорость по x
+std::vector<float> uy(Nx* Ny);              // скорость по y
 
-// функция обработки нажатия на кнопку
-void click_button() {
-    // инициализируем параметры
-    alpha = get_float_param("Angle");
-    V = get_float_param("Velocity");
-    x_0 = get_float_param("x_0");
-    y_0 = get_float_param("y_0");
+// Характеристика Окна
+const int hm_rows = Ny;
+const int hm_cols = Nx;
+Scale hm_scale(800, 800, 0.f, 100.f, 0.f, 100.f);
 
-    // обновление значений
-    t = 0; 
-
-    // очистка буфера (заполнение значением по умолчанию)
-    buffer.fill_value(x_0, y_0);
+int index(int x, int y) {
+    return y * Nx + x;
+}
+int index_q(int x, int y, int q) {
+    return Nx * Ny * q + y * Nx + x;
 }
 
-//основная вычислительная функция
-void calculation_function(){
-    bool pause = get_bool_param("Pause");
+// Функция вычисления равновесной функции распределения
+float equilibrium(int q, float rho_val, float ux_val, float uy_val) {
+    float u2 = ux_val * ux_val + uy_val * uy_val;
+    float cu;
 
-    
-    dt = get_float_param("dt");
-    // если pause = true, то программа ставится на паузу
-    if (pause)
-        return;
+    switch (q) {
+    case 0: cu = 0; break;
+    case 1: cu = ux_val; break;
+    case 2: cu = uy_val; break;
+    case 3: cu = -ux_val; break;
+    case 4: cu = -uy_val; break;
+    case 5: cu = ux_val + uy_val; break;
+    case 6: cu = -ux_val + uy_val; break;
+    case 7: cu = -ux_val - uy_val; break;
+    case 8: cu = ux_val - uy_val; break;
+    default: cu = 0;
+    }
 
-    // увеличиваем время на шаг по времени dt
-    t += dt;
- 
-    std::vector<float> values(hm_rows * hm_cols);
-    for (int r = 0; r < hm_rows; ++r) {
-        for (int c = 0; c < hm_cols; ++c) {
-            float x = hm_scale.x_min + (hm_scale.x_max - hm_scale.x_min) * c / (hm_cols - 1);
-            values[r * hm_cols + c] = (float)sin(x - t);
+    return Wk[q] * rho_val * (1.0f + 3.0f * cu + 4.5f * cu * cu - 1.5f * u2);
+}
+// Функция вычисления макроскопических величин
+void compute_macroscopic() {
+    for (int y = 0; y < Ny; y++) {
+        for (int x = 0; x < Nx; x++) {
+            int idx = index(x, y);
+
+            // Вычисление плотности
+            rho[idx] = 0;
+            for (int q = 0; q < Q; q++) {
+                rho[idx] += f[index_q(x, y, q)];
+            }
+
+            // Вычисление скорости
+            float ux_sum = 0, uy_sum = 0;
+            for (int q = 0; q < Q; q++) {
+                ux_sum += f[index_q(x, y, q)] * Cx[q];
+                uy_sum += f[index_q(x, y, q)] * Cy[q];
+            }
+
+            if (rho[idx] > 1e-6) {  // избегаем деления на ноль
+                ux[idx] = ux_sum / rho[idx];
+                uy[idx] = uy_sum / rho[idx];
+            }
+            else {
+                ux[idx] = 0;
+                uy[idx] = 0;
+            }
         }
     }
+}
+
+void calculation_function() {
+
     clear_plot("Heatmap");
-    add_plot_heatmap("Heatmap", values, hm_rows, hm_cols,
-        "sin(x)", -1.0, 1.0);
-    
+    add_plot_heatmap("Heatmap", rho, hm_rows, hm_cols,
+        "rho", 0, 1.5);
+    add_plot_heatmap("Heatmap", ux, hm_rows, hm_cols,
+        "ux", 0, 1.5);
 
-    // считаем координаты тела по формулам
-    float x = x_0 + V * cos(alpha * M_PI / 180.) * t;  
-    float y = y_0 + V * sin(alpha * M_PI / 180.) * t - g * t * t / 2.;
 
-    // если тело упало на землю, то ничего не делается 
-    if (y <= 0.0f)
-        return;
+    for (int x = 0; x < Nx; x++)
+    {
+        for (int y = 0; y < Ny; y++)
+        {
+            for (size_t q = 0; q < 9; q++)
+            {
+                f[index_q(x, y, q)] = f[index_q(x, y, q)] + (equilibrium(q, rho[index(x, y)], ux[index(x, y)], uy[index(x, y)]) - f[index_q(x, y, q)]) / tau;
+            }
 
-    // добавляем новую точку (x, y) 
-    buffer.addPoint(x, y);
-
-    // получаем данные для графика
-    std::vector<float> X = buffer.getX(); // получить массив X координат
-    std::vector<float> Y = buffer.getY(); // получить массив Y координат
-
-    // условие попадания в мишень
-    if (((x >= target_x[0] && x <= target_x[0] + V * cos(alpha * M_PI / 180.) * dt) && (y >= target_y[0] && y <= target_y[1]))) {
-        set_bool_param("Pause", true);
-        dt = 0; t = 0;
+        }
     }
 
-    // обновляем график 
-    clear_plot("Movement at an angle");
+    compute_macroscopic();
 
-    // создаём тело (add_plot_scatter) и его траекторию (add_plot_scatterline)
-    add_plot_scatterline("Movement at an angle", X, Y, "Body", BLUE);
-    add_plot_scatter("Movement at an angle", X[buffer.head], Y[buffer.head], "Body", RED, 5.f);
 
-    // создаём мишень: отрисовываем линию (add_plot_line) и добавляем точки на границах (add_plot_scatter)
-    add_plot_line("Movement at an angle", target_x, target_y, "Target", WHITE, 2.f);
-    add_plot_scatter("Movement at an angle", target_x[0], target_y[0], "Target", WHITE, 3.f);
-    add_plot_scatter("Movement at an angle", target_x[1], target_y[1], "Target", WHITE, 3.f);
 }
 
 int main() {
     //инициализация основного окна
-    if (!init_gui_library("Task_0: Movement at an angle", widhtWindow, hieghtWindow)) return -1;
-    //Добавить ЧекБокс
-    add_bool_param("Pause", false); 
-    //Добавить кнопку
-    add_button_param("Restart", click_button);
-    //Добавить параметр типа float
-    add_float_param("Velocity", V);
-    add_float_param("Angle", alpha);
-    add_float_param("dt", dt);
-    add_float_param("x_0", x_0);
-    add_float_param("y_0", y_0);
+    if (!init_gui_library("LBM", widhtWindow, hieghtWindow)) return -1;
+    add_bool_param("Pause", false);
 
-    create_plot("Movement at an angle", scale);
 
-    // Heatmap: синус по оси X
+    for (int x = 0; x < Nx / 2; x++)
+    {
+        for (int y = 0; y < Ny; y++)
+        {
+            rho[index(x, y)] = 1.1;
+            rho[index(x + Nx / 2, y)] = 0.9;
+
+        }
+    }
+
+    for (int x = 0; x < Nx; x++)
+    {
+        for (int y = 0; y < Ny; y++)
+        {
+            double u = ux[index(x, y)] * ux[index(x, y)] + uy[index(x, y)] * uy[index(x, y)];
+            int a = 3;
+            float b = 9. / 2.;
+            float d = 3. / 2.;
+
+
+            f[index_q(x, y, 0)] = Wk[0] * rho[index(x, y)] * (1 - d * u);
+            f[index_q(x, y, 1)] = Wk[1] * rho[index(x, y)] * (1 + a * ux[index(x, y)] + b * ux[index(x, y)] * ux[index(x, y)] - d * u);
+            f[index_q(x, y, 2)] = Wk[2] * rho[index(x, y)] * (1 + a * uy[index(x, y)] + b * uy[index(x, y)] * uy[index(x, y)] - d * u);
+            f[index_q(x, y, 3)] = Wk[3] * rho[index(x, y)] * (1 - a * ux[index(x, y)] + b * ux[index(x, y)] * ux[index(x, y)] - d * u);
+            f[index_q(x, y, 4)] = Wk[4] * rho[index(x, y)] * (1 - a * uy[index(x, y)] + b * uy[index(x, y)] * uy[index(x, y)] - d * u);
+            f[index_q(x, y, 5)] = Wk[5] * rho[index(x, y)] * (1 + a * (ux[index(x, y)] + uy[index(x, y)]) + b * (ux[index(x, y)] + uy[index(x, y)]) * (ux[index(x, y)] + uy[index(x, y)]) - d * u);
+            f[index_q(x, y, 6)] = Wk[6] * rho[index(x, y)] * (1 + a * (uy[index(x, y)] - ux[index(x, y)]) + b * (ux[index(x, y)] - uy[index(x, y)]) * (ux[index(x, y)] - uy[index(x, y)]) - d * u);
+            f[index_q(x, y, 7)] = Wk[7] * rho[index(x, y)] * (1 - a * (ux[index(x, y)] + uy[index(x, y)]) + b * (ux[index(x, y)] + uy[index(x, y)]) * (ux[index(x, y)] + uy[index(x, y)]) - d * u);
+            f[index_q(x, y, 8)] = Wk[8] * rho[index(x, y)] * (1 + a * (ux[index(x, y)] - uy[index(x, y)]) + b * (ux[index(x, y)] - uy[index(x, y)]) * (ux[index(x, y)] - uy[index(x, y)]) - d * u);
+        }
+    }
+
     create_plot("Heatmap", hm_scale);
-    
 
     set_calculation_function(calculation_function);
-
     //основной цикл работы программы (считай->рисуй)
     while (gui_main_loop()) {
         sleep_ms(16);
@@ -134,3 +167,4 @@ int main() {
     shutdown_gui_library();
     return 0;
 }
+
