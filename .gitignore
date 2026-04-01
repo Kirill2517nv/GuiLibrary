@@ -1,5 +1,6 @@
 # Build directories
 build/
+build-web/
 out/
 Debug/
 Release/
@@ -71,5 +72,7 @@ Thumbs.db
 # Dependencies (optional - uncomment if you don't want to include external libraries)
 # external/imgui/
 # external/implot/
+
+external/emsdk/
 
 CLAUDE.md

@@ -4,6 +4,14 @@
 #include <cmath>
 #include <iostream>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+
+void emscripten_main_loop() {
+    gui_main_loop();
+}
+#endif
+
 #ifndef M_PI
 #define M_PI 3.14159265358979323846 
 #endif
@@ -96,9 +104,13 @@ int main() {
 
     set_calculation_function(calculation_function);
 
+#ifdef __EMSCRIPTEN__
+    emscripten_set_main_loop(emscripten_main_loop, 0, true);
+#else
     while (gui_main_loop()) {
         sleep_ms(16);
     }
+#endif
 
     shutdown_gui_library();
     return 0;

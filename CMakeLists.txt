@@ -4,13 +4,18 @@ project(GUI_Library)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# 32-bit индексы для ImGui (нужно для Emscripten + docking, чтобы не переполнять 16-bit лимит)
+add_compile_definitions(ImDrawIdx=unsigned\ int)
+
 # Настройки для Windows
 if(WIN32)
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 
-# Поиск пакетов
-find_package(OpenGL REQUIRED)
+# Поиск пакетов (не нужно для Emscripten)
+if(NOT EMSCRIPTEN)
+    find_package(OpenGL REQUIRED)
+endif()
 
 
 # ============================================================
@@ -31,7 +36,11 @@ target_include_directories(imgui PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/backends
 )
 
-target_link_libraries(imgui PUBLIC glfw OpenGL::GL)
+if(EMSCRIPTEN)
+    target_link_libraries(imgui PUBLIC)
+else()
+    target_link_libraries(imgui PUBLIC glfw OpenGL::GL)
+endif()
 
 # ============================================================
 # ImPlot
@@ -51,7 +60,9 @@ target_link_libraries(implot PUBLIC imgui)
 # ============================================================
 # GLFW (у тебя как submodule со своим CMakeLists)
 # ============================================================
-add_subdirectory(external/glfw)
+if(NOT EMSCRIPTEN)
+    add_subdirectory(external/glfw)
+endif()
 
 # ============================================================
 # Основная библиотека
@@ -66,12 +77,19 @@ target_include_directories(gui_library PUBLIC
 )
 
 # Линкуем библиотеки
-target_link_libraries(gui_library
-    imgui
-    implot
-    glfw
-    OpenGL::GL
-)
+if(EMSCRIPTEN)
+    target_link_libraries(gui_library
+        imgui
+        implot
+    )
+else()
+    target_link_libraries(gui_library
+        imgui
+        implot
+        glfw
+        OpenGL::GL
+    )
+endif()
 
 
 # Подключаем задания Task_0..Task_3

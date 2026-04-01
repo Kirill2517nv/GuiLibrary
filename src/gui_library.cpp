@@ -9,6 +9,14 @@
 #include <thread>
 #include <iostream>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#include <emscripten/html5.h>
+
+EM_JS(int, get_browser_width, (), { return window.innerWidth; });
+EM_JS(int, get_browser_height, (), { return window.innerHeight; });
+#endif
+
 
 // Глобальные переменные для хранения состояниякак изменить 
 static GLFWwindow* g_window = nullptr;
@@ -29,9 +37,16 @@ bool init_gui_library(const std::string& window_title, const int widthWindow, co
     }
 
     // Настройка OpenGL
+#ifdef __EMSCRIPTEN__
+    // Для WebGL 2.0 — Emscripten сам выбирает ES API
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
+#else
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#endif
 
     // Создание окна
     g_window = glfwCreateWindow(widthWindow, heightWindow, window_title.c_str(), nullptr, nullptr);
@@ -52,7 +67,9 @@ bool init_gui_library(const std::string& window_title, const int widthWindow, co
     ImGuiIO& io = ImGui::GetIO();
     // Включаем поддержку docking и viewports
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+#ifndef __EMSCRIPTEN__
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+#endif
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Включаем навигацию с клавиатуры
 
     // Настройка стиля
@@ -71,7 +88,11 @@ bool init_gui_library(const std::string& window_title, const int widthWindow, co
 
     // Инициализация бэкендов
     ImGui_ImplGlfw_InitForOpenGL(g_window, true);
+#ifdef __EMSCRIPTEN__
+    ImGui_ImplOpenGL3_Init("#version 300 es");
+#else
     ImGui_ImplOpenGL3_Init("#version 330");
+#endif
 
     g_start_time = std::chrono::high_resolution_clock::now();
     return true;
@@ -80,6 +101,15 @@ bool init_gui_library(const std::string& window_title, const int widthWindow, co
 // Основной цикл приложения
 bool gui_main_loop() {
     if (!g_window) return false;
+
+#ifdef __EMSCRIPTEN__
+    // Подгоняем canvas точно под viewport браузера
+    {
+        int w = get_browser_width();
+        int h = get_browser_height();
+        glfwSetWindowSize(g_window, w, h);
+    }
+#endif
 
     glfwPollEvents();
 
@@ -527,7 +557,10 @@ void set_calculation_function(std::function<void()> calc_func) {
 
 
 void sleep_ms(int milliseconds) {
+#ifndef __EMSCRIPTEN__
     std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
+#endif
+    // В Emscripten sleep не нужен — фреймрейт контролирует браузер
 }
 
 double get_time() {
