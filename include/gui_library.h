@@ -1,29 +1,27 @@
-﻿#pragma once
+#pragma once
 #include "imgui.h"
 #include <string>
 #include <vector>
 #include <functional>
-#include <memory>
-#include <deque>
-#include <iostream>
 #include <cmath>
+#include <variant>
 
-#define RED ImVec4(1.0f, 0.0f, 0.0f, 1.0f)
-#define BLUE ImVec4(0.0f, 0.0f, 1.0f, 1.0f)
+#define RED    ImVec4(1.0f, 0.0f, 0.0f, 1.0f)
+#define BLUE   ImVec4(0.0f, 0.0f, 1.0f, 1.0f)
 #define YELLOW ImVec4(1.0f, 1.0f, 0.0f, 1.0f)
-#define GREEN ImVec4(0.0f, 1.0f, 0.0f, 1.0f)
-#define BLACK ImVec4(0.0f, 0.0f, 0.0f, 1.0f)
-#define WHITE ImVec4(1.0f, 1.0f, 1.0f, 1.0f)
+#define GREEN  ImVec4(0.0f, 1.0f, 0.0f, 1.0f)
+#define BLACK  ImVec4(0.0f, 0.0f, 0.0f, 1.0f)
+#define WHITE  ImVec4(1.0f, 1.0f, 1.0f, 1.0f)
 
 
+// Кольцевой буфер для потоковых данных в реальном времени
 class DataArray {
 public:
-    std::vector<float> x;   // массив X (время в пределах окна)
-    std::vector<float> y;   // массив значений функции
-    size_t maxSize;         // число точек в буфере
-    size_t head;            // текущая позиция для записи
-    float window;           // ширина окна по X
-
+    std::vector<float> x;
+    std::vector<float> y;
+    size_t maxSize;
+    size_t head;
+    float window;  // ширина скользящего окна по X (0 = абсолютное время)
 
     DataArray(float windowWidth, size_t points = 200, float x_0 = 0.0f, float y_0 = 0.0f)
         : maxSize(points), head(0), window(windowWidth)
@@ -34,14 +32,12 @@ public:
 
     void addPoint(float t, float value) {
         head = (head + 1) % maxSize;
-
-        x[head] = window == 0.f ? t: fmod(t, window);
+        x[head] = window == 0.f ? t : fmod(t, window);
         y[head] = value;
     }
 
     void fill_value(float x_value, float y_value) {
         head = 0;
-
         std::fill(x.begin(), x.end(), x_value);
         std::fill(y.begin(), y.end(), y_value);
     }
@@ -50,228 +46,261 @@ public:
     std::vector<float> getY() const { return y; }
 };
 
-// Типы параметров
+// Типы параметров UI
 enum class ParamType {
-    Float,      // Число с плавающей точкой
-    Int,        // Целое число
-    Bool,       // Логическое значение
-    String,      // Строка
+    Float,
+    Int,
+    Bool,
+    String,
     Button
 };
 
-struct Scatter {
-    float x_values;
-    float y_values;
+// Одиночная точка на графике (размер маркера в пикселях)
+struct PlotPoint {
+    float x_value = 0.f;
+    float y_value = 0.f;
     std::string label;
     bool visible = true;
     ImVec4 color;
-    float size;
-
-    void clear() {
-        x_values = 0.0f;
-        y_values = 0.0f;
-        label.clear();
-        visible = true;
-        color = ImVec4(0, 0, 0, 0);
-        size = 0.0f;
-    }
+    float size = 1.f;
 };
 
-struct ScatterLine {
+// Закрашенный круг с радиусом в координатах графика
+struct PlotDisk {
+    float x_value = 0.f;
+    float y_value = 0.f;
+    float radius  = 0.5f;  // в единицах оси X графика
+    std::string label;
+    bool visible = true;
+    ImVec4 color;
+};
+
+// Набор точек (scatter-серия)
+struct PlotPoints {
     std::vector<float> x_values;
     std::vector<float> y_values;
     std::string label;
     bool visible = true;
-    float size;
+    float size = 1.f;
     ImVec4 color;
-
-    void clear() {
-        x_values.clear();
-        y_values.clear();
-        label.clear();
-        visible = true;
-        color = ImVec4(0, 0, 0, 0);
-        size = 0.0f;
-    }
 };
 
-struct FillLine {
+// Сплошная линия
+struct PlotLine {
     std::vector<float> x_values;
     std::vector<float> y_values;
     std::string label;
     bool visible = true;
     ImVec4 color;
-    float size;
-
-    void clear() {
-        x_values.clear();
-        y_values.clear();
-        label.clear();
-        visible = true;
-        color = ImVec4(0, 0, 0, 0);
-        size = 0.0f;
-    }
+    float size = 1.f;
 };
 
+// Тепловая карта
 struct Heatmap {
-    std::vector<float> values;     // данные row-major (rows * cols)
+    std::vector<float> values;      // данные row-major (rows * cols)
     int rows = 0;
     int cols = 0;
-    double scale_min = 0.0;        // 0 = авто
-    double scale_max = 0.0;        // 0 = авто
+    double scale_min = 0.0;         // 0 = авто
+    double scale_max = 0.0;         // 0 = авто
     std::string label;
     bool visible = true;
-    int colormap = 4;              // ImPlotColormap_Viridis
-    std::string label_fmt; // пустая строка = без подписей ячеек (по умолчанию)
-
-    void clear() {
-        values.clear();
-        rows = 0; cols = 0;
-        scale_min = 0.0; scale_max = 0.0;
-        label.clear();
-        visible = true;
-        colormap = 4;
-        label_fmt.clear();
-    }
+    int colormap = 4;               // ImPlotColormap_Viridis
+    std::string label_fmt;          // пустая строка = без подписей ячеек
 };
 
-// Структура для хранения данных масштаба
+// Масштаб осей графика (без размера в пикселях — это не свойство шкалы)
 struct Scale {
-    int width;
-    int height;
     float x_min;
     float x_max;
     float y_min;
     float y_max;
 
-    Scale(int width = 1200, int height = 800, float x_min = -1.f, float x_max = 1.f, float y_min = -1.f, float y_max = 1.f) : width(width), height(height),
-            x_min(x_min), x_max(x_max), y_min(y_min), y_max(y_max) {}
+    Scale(float x_min = -1.f, float x_max = 1.f,
+          float y_min = -1.f, float y_max = 1.f)
+        : x_min(x_min), x_max(x_max), y_min(y_min), y_max(y_max) {}
 };
 
-// Структура для хранения данных графика
+// Данные одного графика
 struct PlotData {
-    std::vector<Scatter> scatterVector;
-    std::vector<ScatterLine> scatterlineVector;
-    std::vector<FillLine> lineVector;
-    std::vector<Heatmap> heatmapVector;
+    std::vector<PlotPoint>  pointVector;
+    std::vector<PlotPoints> pointsVector;
+    std::vector<PlotLine>   lineVector;
+    std::vector<Heatmap>    heatmapVector;
+    std::vector<PlotDisk>   diskVector;
     Scale scale;
     bool scale_dirty = false;
+    int width  = 600;
+    int height = 400;
 
     PlotData() = default;
-    PlotData(const Scale& scale_) : scale(scale_) {}
+    PlotData(const Scale& scale_, int w = 600, int h = 400)
+        : scale(scale_), width(w), height(h) {}
 
     void clear() {
-        scatterVector.clear();
-        scatterlineVector.clear();
+        pointVector.clear();
+        pointsVector.clear();
         lineVector.clear();
         heatmapVector.clear();
+        diskVector.clear();
     }
 };
 
-// Структура для параметра
+// Параметр UI
 struct Parameter {
     std::string name;
     std::string label;
     ParamType type;
-    union {
-        float float_value;
-        int int_value;
-        bool bool_value;
-    };
-    std::string string_value;
-    std::function<void()> function;
-    float min_value = 0.0f;
-    float max_value = 100.0f;
-    float step = 1.0f;
-    bool use_slider = false;
+    std::variant<float, int, bool, std::string> value;
+    std::function<void()> function;  // только для Button
+    float min_value  = 0.0f;
+    float max_value  = 100.0f;
+    float step       = 1.0f;
+    bool  use_slider = false;
 };
 
-// Глобальные функции для работы с GUI
+// ============================================================
+// Инициализация / жизненный цикл
+// ============================================================
 
-// Инициализация библиотеки
-bool init_gui_library(const std::string& window_title = "Численное моделирование", const int widthWindow = 1200, const int heightWindow = 800);
+bool init_gui_library(const std::string& window_title = "Численное моделирование",
+                      int widthWindow = 1200, int heightWindow = 800);
 
-// Основной цикл приложения
 bool gui_main_loop();
 
-// Завершение работы
+// Запускает главный цикл. Работает как в нативной, так и в WASM-сборке —
+// скрывает #ifdef __EMSCRIPTEN__ от кода задачи.
+void run_gui_library();
+
 void shutdown_gui_library();
 
-// === ФУНКЦИИ ДЛЯ РАБОТЫ С ПАРАМЕТРАМИ ===
+// ============================================================
+// Параметры
+// ============================================================
 
-// Добавить параметр типа float
-void add_float_param(const std::string& name, 
-                    float initial_value = 0.0f, float min = 0.0f, float max = 100.0f, float step = 0.2f, bool use_slider = false);
+void add_float_param(const std::string& name,
+                     float initial_value = 0.0f, float min = 0.0f, float max = 100.0f,
+                     float step = 0.2f, bool use_slider = false);
 
-// Добавить параметр типа int
-void add_int_param(const std::string& name, 
-                  int initial_value = 0, int min = 0, int max = 100, int step = 1, bool use_slider = false);
+void add_int_param(const std::string& name,
+                   int initial_value = 0, int min = 0, int max = 100,
+                   int step = 1, bool use_slider = false);
 
-// Добавить параметр типа bool
 void add_bool_param(const std::string& name, bool initial_value = false);
 
-// Добавить параметр типа string
 void add_string_param(const std::string& name, const std::string& initial_value = "");
-// Добавить параметр типа button
+
 void add_button_param(const std::string& name, std::function<void()> function);
 
-// Получить значение параметра
-float get_float_param(const std::string& name);
-
-void set_float_param(const std::string& name, float value);
-int get_int_param(const std::string& name);
-
-void set_int_param(const std::string& name, int value);
-bool get_bool_param(const std::string& name);
-void set_bool_param(const std::string& name, bool value);
+float       get_float_param(const std::string& name);
+void        set_float_param(const std::string& name, float value);
+int         get_int_param(const std::string& name);
+void        set_int_param(const std::string& name, int value);
+bool        get_bool_param(const std::string& name);
+void        set_bool_param(const std::string& name, bool value);
 std::string get_string_param(const std::string& name);
+void        set_string_param(const std::string& name, const std::string& value);
 
-void set_string_param(const std::string& name, const std::string& value);
+// ============================================================
+// Графики
+// ============================================================
 
-// === ФУНКЦИИ ДЛЯ РАБОТЫ С ГРАФИКАМИ ===
+// Создать новый график. width/height — начальный размер в пикселях (можно менять через слайдеры).
+void create_plot(const std::string& name, const Scale& scale,
+                 int width = 600, int height = 400);
 
-// Создать новый график
-void create_plot(const std::string& name, const Scale& scale);
+// Обновить границы осей (применяется на следующем кадре)
+void set_plot_scale(const std::string& name,
+                    float x_min, float x_max, float y_min, float y_max);
 
-// Обновить границы осей графика (применяется на следующем кадре)
-void set_plot_scale(const std::string& name, float x_min, float x_max, float y_min, float y_max);
+// Нарисовать закрашенный круг с радиусом в координатах графика.
+// Если оси X и Y имеют разный масштаб — круг будет выглядеть как эллипс
+// (что физически корректно: форма объекта сохраняется в пространстве данных).
+void add_plot_disk(const std::string& plot_name, float x, float y, float radius,
+                   const std::string& label = "Данные",
+                   const ImVec4& color = BLACK);
 
-//Нарисовать точку
-void add_plot_scatter(const std::string& plot_name, const float& x, const float& y, 
-                    const std::string& label = "Данные", const ImVec4& color = BLACK, const float& size = 1.0f);
-//Нарисовать линию из точек
-void add_plot_scatterline(const std::string& plot_name, const std::vector<float>& x, const std::vector<float>& y, 
-                    const std::string& label = "Данные", const ImVec4& color = BLACK, const float& size = 1.0f);
-//Нарисовать сплошную линию
-void add_plot_line(const std::string& plot_name, const std::vector<float>& x, const std::vector<float>& y, 
-                    const std::string& label = "Данные", const ImVec4& color = BLUE, const float& size = 1.0f);
+// Нарисовать одну точку
+void add_plot_point(const std::string& plot_name, float x, float y,
+                    const std::string& label = "Данные",
+                    const ImVec4& color = BLACK, float size = 1.0f);
+
+// Нарисовать набор точек (scatter)
+void add_plot_points(const std::string& plot_name,
+                     const std::vector<float>& x, const std::vector<float>& y,
+                     const std::string& label = "Данные",
+                     const ImVec4& color = BLACK, float size = 1.0f);
+
+// Перегрузка для double-данных
+void add_plot_points(const std::string& plot_name,
+                     const std::vector<double>& x, const std::vector<double>& y,
+                     const std::string& label = "Данные",
+                     const ImVec4& color = BLACK, float size = 1.0f);
+
+// Нарисовать сплошную линию
+void add_plot_line(const std::string& plot_name,
+                   const std::vector<float>& x, const std::vector<float>& y,
+                   const std::string& label = "Данные",
+                   const ImVec4& color = BLUE, float size = 1.0f);
+
+// Перегрузка для double-данных
+void add_plot_line(const std::string& plot_name,
+                   const std::vector<double>& x, const std::vector<double>& y,
+                   const std::string& label = "Данные",
+                   const ImVec4& color = BLUE, float size = 1.0f);
 
 void add_plot_heatmap(const std::string& plot_name,
                       const std::vector<float>& values,
                       int rows, int cols,
-                      const std::string& label = "Heatmap",
+                      const std::string& label    = "Heatmap",
                       double scale_min = 0.0, double scale_max = 0.0,
                       int colormap = 4,
                       const std::string& label_fmt = "");
 
-// Очистить график
+// Очистить все серии графика (вызывать каждый кадр перед добавлением новых данных)
 void clear_plot(const std::string& plot_name);
 
-// === ФУНКЦИИ ДЛЯ РАСЧЕТОВ ===
+// ============================================================
+// Расчёт
+// ============================================================
 
-// Установить функцию расчета (лямбда-функция)
+// Установить функцию, вызываемую каждый кадр перед рендерингом UI
 void set_calculation_function(std::function<void()> calc_func);
 
-// Функция для получения размера массива данных графика
-int get_plot_data_size(const std::string& plot_name);
+// ============================================================
+// Разметка окон (docking layout)
+// ============================================================
 
-// Функция для заполнения данных графика 
-void fill_plot_data(const std::string& plot_name, int index, float x, float y);
+// Автоматически расположить окна: Parameters слева (params_ratio от ширины),
+// все графики справа в виде вкладок.
+// В WASM: применяется при каждом запуске (браузер не сохраняет позиции).
+// В нативной версии: применяется только при первом запуске, пока нет imgui.ini.
+void set_auto_layout(float params_ratio = 0.25f);
 
-// === УТИЛИТЫ ===
+// Расширенный вариант: полный контроль над разметкой.
+// Callback получает ID корневого dockspace; внутри него используй layout_split_* и layout_dock().
+// Пример:
+//   set_default_layout([](ImGuiID id) {
+//       ImGuiID left, right;
+//       layout_split_left(id, 0.3f, &left, &right);
+//       layout_dock("Parameters", left);
+//       layout_dock("График",     right);
+//   });
+void set_default_layout(std::function<void(ImGuiID dockspace_id)> layout_fn);
 
-// Функция для паузы (для анимации)
-void sleep_ms(int milliseconds);
+// ── Вспомогательные функции для использования внутри set_default_layout ──
 
-// Функция для получения времени
+// Разбить узел вертикально: левая часть получает ratio*100% ширины
+void layout_split_left(ImGuiID node, float ratio, ImGuiID* out_left, ImGuiID* out_right);
+
+// Разбить узел горизонтально: верхняя часть получает ratio*100% высоты
+void layout_split_up(ImGuiID node, float ratio, ImGuiID* out_top, ImGuiID* out_bottom);
+
+// Поместить окно с именем name в узел node
+void layout_dock(const std::string& name, ImGuiID node);
+
+// ============================================================
+// Утилиты
+// ============================================================
+
+void   sleep_ms(int milliseconds);
 double get_time();

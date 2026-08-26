@@ -7,6 +7,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # 32-bit индексы для ImGui (нужно для Emscripten + docking, чтобы не переполнять 16-bit лимит)
 add_compile_definitions(ImDrawIdx=unsigned\ int)
 
+# Вспомогательная функция для настройки WASM-сборки заданий
+include(cmake/EmscriptenTask.cmake)
+
 # Настройки для Windows
 if(WIN32)
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
@@ -58,7 +61,7 @@ target_include_directories(implot PUBLIC
 target_link_libraries(implot PUBLIC imgui)
 
 # ============================================================
-# GLFW (у тебя как submodule со своим CMakeLists)
+# GLFW
 # ============================================================
 if(NOT EMSCRIPTEN)
     add_subdirectory(external/glfw)
@@ -76,7 +79,6 @@ target_include_directories(gui_library PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/external/glfw/include
 )
 
-# Линкуем библиотеки
 if(EMSCRIPTEN)
     target_link_libraries(gui_library
         imgui
@@ -91,10 +93,27 @@ else()
     )
 endif()
 
+# ============================================================
+# Задания (можно выборочно отключать через -DBUILD_TASK_N=OFF)
+# ============================================================
+option(BUILD_TASK_0  "Собирать Task_0 (LBM)"               ON)
+option(BUILD_TASK_1  "Собирать Task_1 (Волны)"             ON)
+option(BUILD_TASK_2  "Собирать Task_2 (Маятник)"           ON)
+option(BUILD_TASK_3  "Собирать Task_3 (Гравитация)"        ON)
+option(BUILD_NEWTASK "Собирать NewTask (Молекулярная дин.)" ON)
 
-# Подключаем задания Task_0..Task_3
-add_subdirectory(Task_0)
-add_subdirectory(Task_1)
-add_subdirectory(Task_2)
-add_subdirectory(Task_3)
-add_subdirectory(NewTask)
+if(BUILD_TASK_0)
+    add_subdirectory(Task_0)
+endif()
+if(BUILD_TASK_1)
+    add_subdirectory(Task_1)
+endif()
+if(BUILD_TASK_2)
+    add_subdirectory(Task_2)
+endif()
+if(BUILD_TASK_3)
+    add_subdirectory(Task_3)
+endif()
+if(BUILD_NEWTASK)
+    add_subdirectory(NewTask)
+endif()

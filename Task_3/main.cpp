@@ -1,23 +1,22 @@
-#include "gui_library.h"
+﻿#include "gui_library.h"
 #include <vector>
 #include <cmath>
 
-int widhtWindow = 1200;// ширина окна
-int hieghtWindow = 800;// высота окна
+int widhtWindow = 1200;
+int hieghtWindow = 800;
 
-float dt = 0.02f;  // шаг по времени
-float R;  // расстояние от планеты до Солнца
-float x_0 = 2.5f, y_0 = 0.0f; // начальные координаты планеты
-float x = x_0, y = y_0; // координаты планеты в момент времени t
-float v_x = 0.0f, v_y = 0.5f; // скорость планеты по x и y
-float a_x, a_y;  // ускорение планеты по x и y
-float a;      // модуль ускорения
+float dt = 0.02f;
+float R;
+float x_0 = 2.5f, y_0 = 0.0f;
+float x = x_0, y = y_0;
+float v_x = 0.0f, v_y = 0.5f;
+float a_x, a_y;
+float a;
 float alpha = 1.f;
 
-DataArray buffer(10, 20000, x, y); // объект для хранения точек для отрисовки
-Scale scale(700, 700, -3.f, 3.f, -3.f, 3.f); // объект для задания шкалы
+DataArray buffer(10, 20000, x, y);
+Scale scale(-3.f, 3.f, -3.f, 3.f);
 
-// функция обработки нажатия на кнопку (Запуск с новой скоростью)
 void click_button() {
     v_x = 0.0f;
     v_y = get_float_param("Velocity");
@@ -25,37 +24,31 @@ void click_button() {
     x = x_0; y = y_0;
 }
 
-//основная вычислительная функция
 void calculation_function(){
     bool pause = get_bool_param("Pause");
-    
-    if (pause)
-        return;
+    if (pause) return;
 
-    x += v_x * dt;  
+    x += v_x * dt;
     y += v_y * dt;
 
     R = sqrt(x * x + y * y);
 
     a = alpha / (R * R);
-    a_x = - x / R * a;
-    a_y = - y / R * a;
+    a_x = -x / R * a;
+    a_y = -y / R * a;
 
     v_x += a_x * dt;
     v_y += a_y * dt;
-    
-    // добавляем новую точку (x, y) 
+
     buffer.addPoint(x, y);
 
-    // получаем данные для графика
-    std::vector<float> x = buffer.getX();
-    std::vector<float> y = buffer.getY();
+    std::vector<float> bx = buffer.getX();
+    std::vector<float> by = buffer.getY();
 
-    // обновляем график фазовой диаграммы
     clear_plot("Gravity");
-    add_plot_scatterline("Gravity", x, y, "Planet", BLUE);
-    add_plot_scatter("Gravity", x[buffer.head], y[buffer.head], "Planet", RED, 8.0f);
-    add_plot_scatter("Gravity", 0, 0, "Sun", YELLOW, 13.0f);
+    add_plot_points("Gravity", bx, by, "Planet", BLUE);
+    add_plot_point("Gravity", bx[buffer.head], by[buffer.head], "Planet", RED, 8.0f);
+    add_plot_point("Gravity", 0, 0, "Sun", YELLOW, 13.0f);
 }
 
 int main() {
@@ -65,14 +58,11 @@ int main() {
     add_button_param("Restart", click_button);
     add_float_param("Velocity", v_y);
 
-    create_plot("Gravity", scale);
+    create_plot("Gravity", scale, 700, 700);
 
     set_calculation_function(calculation_function);
+    set_auto_layout();
 
-    while (gui_main_loop()) {
-        sleep_ms(16);
-    }
-
-    shutdown_gui_library();
+    run_gui_library();
     return 0;
 }
