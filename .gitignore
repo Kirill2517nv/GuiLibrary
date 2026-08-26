@@ -2,6 +2,7 @@
 build/
 build-web/
 out/
+.playwright-mcp/
 Debug/
 Release/
 x64/
@@ -76,3 +77,12 @@ Thumbs.db
 external/emsdk/
 
 CLAUDE.md
+
+# Артефакты WASM-сборки (кладутся рядом с исходниками задания).
+# Шаблон web/shell.html — исходник, он не сюда.
+Task_*/*.html
+Task_*/*.js
+Task_*/*.wasm
+NewTask/*.html
+NewTask/*.js
+NewTask/*.wasm
