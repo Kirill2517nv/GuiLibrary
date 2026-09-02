@@ -1,16 +1,13 @@
 #include "gui_library.h"
-#include <vector>
 #include <cmath>
 
 float t = 0.0f;    // текущее глобальное время
 float dt = 0.15f;  // шаг по времени
-DataArray buffer(200, 20000);
-Scale scale(0., 200., -2., 2.);
-
 // функция обработки нажатия на кнопку (очистка графика)
 void click_clear() {
     t = 0;
-    buffer.fill_value(0.f, 0.f);
+    set_float_param("Time", t);
+    clear_plot_history("Sin");
 }
 
 //основная вычислительная функция
@@ -28,14 +25,11 @@ void calculation_function(){
 
     float y_t = A1 * sin(w1 * t) + A2 * sin(w2 * t);
 
-    buffer.addPoint(t, y_t);
-
-    std::vector<float> x = buffer.getX();
-    std::vector<float> y = buffer.getY();
-
     clear_plot("Sin");
-    add_plot_points("Sin", x, y, "y = A1*sin(omega1*t) + A2*sin(omega2*t)", BLUE);
-    add_plot_point("Sin", x[buffer.head], y[buffer.head], "y = A1*sin(omega1*t) + A2*sin(omega2*t)", RED);
+    add_plot_history_point("Sin", t, y_t,
+                           "y = A1*sin(omega1*t) + A2*sin(omega2*t)",
+                           BLUE, 1.0f, 20000);
+    add_plot_point("Sin", t, y_t, "Current value", RED, 5.0f);
 }
 
 int main() {
@@ -49,7 +43,7 @@ int main() {
     add_float_param("Time", t);
     add_bool_param("Pause", false);
 
-    create_plot("Sin", scale, 750, 475);
+    create_plot("Sin", 0.f, 200.f, -2.f, 2.f, 750, 475);
 
     set_calculation_function(calculation_function);
 

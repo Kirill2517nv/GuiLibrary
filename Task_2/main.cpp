@@ -21,14 +21,14 @@ bool pause;
 float alpha = 0.0f;  // угол отклонения маятника
 float v = 1.f;       // скорость тела
 
-DataArray buffer(10, 2000, alpha, v);
-Scale scale(-1.1f, 1.1f, -1.1f, 1.1f);
-
 void click_button() {
     t = 0;
     alpha = 0;
     v = get_float_param("Velocity");
-    buffer.fill_value(alpha, v);
+    set_float_param("Time", t);
+    clear_plot_history("Phase diagram");
+    add_plot_history_point("Phase diagram", alpha, v,
+                           "Phase diagram", BLUE, 1.f, 2000);
 }
 
 void calculation_function() {
@@ -55,14 +55,10 @@ void calculation_function() {
 
     v += -g * sin(alpha) * dt;
 
-    buffer.addPoint(alpha, v);
-
-    std::vector<float> x = buffer.getX();
-    std::vector<float> y = buffer.getY();
-
     clear_plot("Phase diagram");
-    add_plot_points("Phase diagram", x, y, "Phase diagram", BLUE);
-    add_plot_point("Phase diagram", x[buffer.head], y[buffer.head], "Phase diagram", RED, 6.f);
+    add_plot_history_point("Phase diagram", alpha, v,
+                           "Phase diagram", BLUE, 1.f, 2000);
+    add_plot_point("Phase diagram", alpha, v, "Current state", RED, 6.f);
 }
 
 int main() {
@@ -73,8 +69,12 @@ int main() {
     add_float_param("Velocity", v);
     add_float_param("Time", t);
 
-    create_plot("Pendulum",      scale, 500, 500);
-    create_plot("Phase diagram", scale, 500, 500);
+    create_plot("Pendulum",      -1.1f, 1.1f, -1.1f, 1.1f, 500, 500);
+    create_plot("Phase diagram", -1.1f, 1.1f, -1.1f, 1.1f, 500, 500);
+
+    // Начальная точка фазовой траектории до первого шага моделирования.
+    add_plot_history_point("Phase diagram", alpha, v,
+                           "Phase diagram", BLUE, 1.f, 2000);
 
     set_calculation_function(calculation_function);
 

@@ -1,5 +1,4 @@
 ﻿#include "gui_library.h"
-#include <vector>
 #include <cmath>
 
 int widhtWindow = 1200;
@@ -14,14 +13,13 @@ float a_x, a_y;
 float a;
 float alpha = 1.f;
 
-DataArray buffer(10, 20000, x, y);
-Scale scale(-3.f, 3.f, -3.f, 3.f);
-
 void click_button() {
     v_x = 0.0f;
     v_y = get_float_param("Velocity");
-    buffer.fill_value(x_0, y_0);
     x = x_0; y = y_0;
+    clear_plot_history("Gravity");
+    add_plot_history_point("Gravity", x, y, "Planet trajectory",
+                           BLUE, 1.f, 20000);
 }
 
 void calculation_function(){
@@ -40,14 +38,10 @@ void calculation_function(){
     v_x += a_x * dt;
     v_y += a_y * dt;
 
-    buffer.addPoint(x, y);
-
-    std::vector<float> bx = buffer.getX();
-    std::vector<float> by = buffer.getY();
-
     clear_plot("Gravity");
-    add_plot_points("Gravity", bx, by, "Planet", BLUE);
-    add_plot_point("Gravity", bx[buffer.head], by[buffer.head], "Planet", RED, 8.0f);
+    add_plot_history_point("Gravity", x, y, "Planet trajectory",
+                           BLUE, 1.f, 20000);
+    add_plot_point("Gravity", x, y, "Planet", RED, 8.0f);
     add_plot_point("Gravity", 0, 0, "Sun", YELLOW, 13.0f);
 }
 
@@ -58,7 +52,11 @@ int main() {
     add_button_param("Restart", click_button);
     add_float_param("Velocity", v_y);
 
-    create_plot("Gravity", scale, 700, 700);
+    create_plot("Gravity", -3.f, 3.f, -3.f, 3.f, 700, 700);
+
+    // Начальное положение планеты до первого шага моделирования.
+    add_plot_history_point("Gravity", x, y, "Planet trajectory",
+                           BLUE, 1.f, 20000);
 
     set_calculation_function(calculation_function);
     set_auto_layout();

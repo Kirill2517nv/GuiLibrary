@@ -1,0 +1,40 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Configure Task_1",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-S", "${workspaceFolder}",
+                "-B", "${workspaceFolder}/build",
+                "-DBUILD_TASK_0=OFF",
+                "-DBUILD_TASK_1=ON",
+                "-DBUILD_TASK_2=OFF",
+                "-DBUILD_TASK_3=OFF",
+                "-DBUILD_NEWTASK=OFF"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Build Task_1",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${workspaceFolder}/build",
+                "--config",
+                "Debug",
+                "--target",
+                "Task_1",
+                "--parallel"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "dependsOn": "Configure Task_1",
+            "problemMatcher": ["$msCompile", "$gcc"]
+        }
+    ]
+}

@@ -1,245 +1,95 @@
 # GUI Library для численного моделирования
 
-Простая графическая библиотека на C++. Использует ImGui (ветка `docking`) и ImPlot для создания интерактивных графиков и параметров. Сборка осуществляется через git submodules.
+Учебная C++17-библиотека поверх ImGui (ветка `docking`) и ImPlot. Она позволяет
+добавлять параметры и строить графики, не работая напрямую с окном, OpenGL и
+памятью графического движка.
 
-## Структура проекта
+## Быстрый старт
 
-```
-GuiLibrary/
-├── CMakeLists.txt          # Основной файл сборки
-├── include/
-│   └── gui_library.h       # Заголовочный файл библиотеки
-├── src/
-│   └── gui_library.cpp     # Реализация библиотеки
-├── Task_0/
-│   ├── CMakeLists.txt  
-│   └── main.cpp # Пример с анимацией
-├── external/
-│   ├── glfw/               # Сабмодуль GLFW
-│   ├── imgui/              # Сабмодуль ImGui (ветка docking)
-│   └── implot/             # Сабмодуль ImPlot         
-├── README.md   
-```
+Требуются Git, CMake 3.16+, компилятор C++17 и OpenGL. В Windows рекомендуется
+Visual Studio 2022 с workload «Разработка классических приложений на C++» и
+Git Bash.
 
-## Быстрый старт (Windows 10/11, Visual Studio 2022)
+Обычное клонирование и сборка `Task_1`:
 
-### 1) Требования
-
-- Visual Studio 2022 (рабочая нагрузка «Разработка классических приложений на C++»)
-- CMake 3.16+
-- Git
-
-Проверьте, что инструменты доступны в PATH:
-
-```powershell
-cmake --version
-git --version
-```
-
-### 2) Клонирование репозитория
-
-```powershell
-cd C:\GitHub
-git clone <URL_ВАШЕГО_РЕПОЗИТОРИЯ> GuiLibrary
+```bash
+git clone --recurse-submodules https://github.com/Kirill2517nv/GuiLibrary.git
 cd GuiLibrary
+bash scripts/bootstrap.sh Task_1
+bash scripts/run.sh Task_1
 ```
 
-### 3) Инициализация сабмодулей (без vcpkg)
+Если репозиторий уже клонирован без зависимостей, `bootstrap.sh` сам выполнит
+`git submodule update --init --recursive`. Для другой задачи передайте `Task_2`,
+`Task_3` или `NewTask`.
 
-Проект использует сабмодули `GLFW`, `ImGui`, `ImPlot`. Для `ImGui` автоматически используется ветка `docking` (зафиксировано в `.gitmodules`). Выполните:
+Для Debug-сборки:
 
-```powershell
-# Инициализация и обновление сабмодулей согласно .gitmodules
-git submodule update --init --recursive
+```bash
+BUILD_TYPE=Debug bash scripts/bootstrap.sh Task_1
+BUILD_TYPE=Debug bash scripts/run.sh Task_1
 ```
 
-### 4) Конфигурация CMake (Visual Studio 2022, x64)
+## VS Code
 
-```powershell
-mkdir build 
-cd build
-cmake ..
-```
+Откройте корень репозитория и установите предложенные расширения CMake Tools и
+C/C++. После автоматической конфигурации:
 
-### 5) Запуск примеров
+- `Ctrl+Shift+B` собирает `Task_1`;
+- конфигурация `Run Task_1 (Windows)` или `Run Task_1 (Linux)` запускает её с отладчиком;
+- другую цель можно выбрать командой `CMake: Set Launch/Debug Target`.
 
-```powershell
-build\Task_0\Release\Task_0.exe
-build\Task_1\Release\Task_1.exe
-build\Task_2\Release\Task_2.exe
-build\Task_3\Release\Task_3.exe
-```
-
-## Требования
-
-- C++17
-- CMake 3.16+
-- OpenGL 3.3+
-- GLFW (сабмодуль)
-- ImGui (ветка `docking`, сабмодуль)
-- ImPlot (сабмодуль)
-
-## API библиотеки
-
-### Инициализация
+## Минимальный пример с историей
 
 ```cpp
 #include "gui_library.h"
+#include <cmath>
 
-// Инициализация
-if (!init_gui_library("My project")) {
-    return -1;
+float t = 0.f;
+
+void restart() {
+    t = 0.f;
+    clear_plot_history("Sin");
+}
+
+void calculate() {
+    if (get_bool_param("Pause")) return;
+
+    t += 0.15f;
+    float y = std::sin(t);
+
+    clear_plot("Sin"); // очищает только объекты текущего кадра
+    add_plot_history_point("Sin", t, y, "sin(t)", BLUE, 1.f, 2000);
+    add_plot_point("Sin", t, y, "Current value", RED);
+}
+
+int main() {
+    if (!init_gui_library("Sin")) return 1;
+
+    add_bool_param("Pause", false);
+    add_button_param("Restart", restart);
+    create_plot("Sin", 0.f, 200.f, -2.f, 2.f, 750, 475);
+    set_calculation_function(calculate);
+    run_gui_library();
 }
 ```
 
-### Добавление параметров
+`add_plot_history_point` хранит кольцевой буфер внутри графика. Функция
+`clear_plot_history` удаляет накопленную историю, а `set_plot_scale` меняет
+границы уже созданного графика. Старые `DataArray`, `Scale` и перегрузка
+`create_plot(name, scale, ...)` пока сохранены для совместимости со старыми
+учебными работами.
 
-```cpp
-// Числовой параметр
-add_float_param("mass", 1.0f, 0.1f, 10.0f, 0.1f);
+## Структура
 
-// Целочисленный параметр
-add_int_param("steps", 100, 10, 1000, 10);
-
-// Логический параметр
-add_bool_param("show_grid", true);
-
-// Строковый параметр
-add_string_param("title", "My graph");
+```text
+include/gui_library.h   публичный API
+src/gui_library.cpp     состояние GUI и реализация
+Task_1/main.cpp         основной учебный пример
+external/               Git-сабмодули GLFW, ImGui и ImPlot
+scripts/                сборка и запуск из терминала
+.vscode/                сборка и отладка из VS Code
 ```
 
-### Получение значений параметров
-
-```cpp
-float mass = get_float_param("mass");
-int steps = get_int_param("steps");
-bool show_grid = get_bool_param("show_grid");
-std::string title = get_string_param("title");
-```
-
-### Работа с графиками
-
-```cpp
-// Создание графика
-create_plot("Graph", scale);
-
-// Добавление данных
-std::vector<float> x = {1, 2, 3, 4, 5};
-std::vector<float> y = {1, 4, 9, 16, 25};
-
-// Добавление точки на график:
-add_plot_scatter("Graph", x[0], y[0], "y = x²", RED); // В скобках указываются по порядку: название графика, значение по оси X, значение по оси Y, название отрисованного объекта, цвет объекта на графике
-
-// Добавление линии из точек на график:
-add_plot_scatterline("Graph", x, y, "y = x²", BLUE); 
-
-// Координаты точек (0, 0) и (5, 7) 
-std::vector<float> coordX = {0.0f, 5.0f};
-std::vector<float> coordY = {0.0f, 7.0f};
-// Добавление отрезка на график:
-add_plot_line("Graph", coordX, coordY, "section", WHITE); 
-
-// Очистка графика
-clear_plot("Graph");
-```
-
-### Функция расчета 
-
-```cpp
-void calc_function() {
-    // Получаем параметры
-    float mass = get_float_param("mass");
-    int steps = get_int_param("steps");
-    
-    // Создаем данные
-    std::vector<float> x_values(steps);
-    std::vector<float> y_values(steps);
-    
-    // Заполняем данные
-    for (int i = 0; i < steps; ++i) {
-        float x = (float)i / steps * 10.0f;
-        x_values[i] = x;
-        y_values[i] = mass * x * x; // Ваша формула
-    }
-    
-    // Обновляем график
-    clear_plot("Graph");
-    add_plot_data("Graph", x_values, y_values, "Result", RED);
-};
-
-// Устанавливаем функцию расчета
-set_calculation_function(calc_function);
-```
-
-### Основной цикл
-
-```cpp
-while (gui_main_loop()) {
-    // Функция расчета вызывается автоматически
-    sleep_ms(16); // Для анимации
-}
-
-// Завершение
-shutdown_gui_library();
-```
-
-### Как добавить новый параметр:
-
-1. **Определите тип параметра:**
-   - `add_float_param()` - для чисел с плавающей точкой
-   - `add_int_param()` - для целых чисел
-   - `add_bool_param()` - для да/нет
-   - `add_string_param()` - для текста
-
-2. **Укажите имя и название переменной:**
-   ```cpp
-   add_float_param("speed", speed);
-   ```
-
-3. **Получите значение в функции расчета:**
-   ```cpp
-   float speed = get_float_param("speed");
-   ```
-
-### Как написать функцию расчета:
-
-1. **Создайте функцию или лямбда-функцию:**
-   ```cpp
-   void my_calc() {
-       // Ваш код здесь
-   };
-
-   auto my_calc = []() {
-       // Ваш код здесь
-   };
-   ```
-
-2. **Получите параметры:**
-   ```cpp
-   float param1 = get_float_param("param1");
-   ```
-
-3. **Создайте массивы данных:**
-   ```cpp
-   std::vector<float> x_values(100);
-   std::vector<float> y_values(100);
-   ```
-
-4. **Заполните данные по вашей формуле:**
-   ```cpp
-   for (int i = 0; i < 100; ++i) {
-       x_values[i] = i * 0.1f;
-       y_values[i] = param1 * sin(x_values[i]); // Ваша формула
-   }
-   ```
-
-5. **Обновите график:**
-   ```cpp
-   clear_plot("Graph");
-   add_plot_scatterline("Graph", x_values, y_values, "Sin", BLUE);
-   ```
-
-6. **Установите функцию:**
-   ```cpp
-   set_calculation_function(my_calc);
-   ```
+Архитектурный разбор и направление дальнейшего развития находятся в
+[`docs/ARCHITECTURE_REVIEW.md`](docs/ARCHITECTURE_REVIEW.md).

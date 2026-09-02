@@ -95,6 +95,18 @@ struct PlotLine {
     float size = 1.f;
 };
 
+// История одной потоковой величины. Хранится внутри графика, поэтому коду
+// учебной задачи не нужны собственные кольцевые буферы.
+struct PlotHistory {
+    std::vector<float> x_values;
+    std::vector<float> y_values;
+    std::string label;
+    ImVec4 color;
+    float size = 1.f;
+    size_t next = 0;
+    size_t count = 0;
+};
+
 // Тепловая карта
 struct Heatmap {
     std::vector<float> values;      // данные row-major (rows * cols)
@@ -127,6 +139,7 @@ struct PlotData {
     std::vector<PlotLine>   lineVector;
     std::vector<Heatmap>    heatmapVector;
     std::vector<PlotDisk>   diskVector;
+    std::vector<PlotHistory> historyVector;
     Scale scale;
     bool scale_dirty = false;
     int width  = 600;
@@ -208,6 +221,11 @@ void        set_string_param(const std::string& name, const std::string& value);
 void create_plot(const std::string& name, const Scale& scale,
                  int width = 600, int height = 400);
 
+// Учебная перегрузка: позволяет задать границы без отдельного объекта Scale.
+void create_plot(const std::string& name,
+                 float x_min, float x_max, float y_min, float y_max,
+                 int width = 600, int height = 400);
+
 // Обновить границы осей (применяется на следующем кадре)
 void set_plot_scale(const std::string& name,
                     float x_min, float x_max, float y_min, float y_max);
@@ -241,6 +259,20 @@ void add_plot_line(const std::string& plot_name,
                    const std::vector<float>& x, const std::vector<float>& y,
                    const std::string& label = "Данные",
                    const ImVec4& color = BLUE, float size = 1.0f);
+
+// Добавить точку в историю именованной серии. Библиотека сама хранит не более
+// max_points последних значений и рисует их в хронологическом порядке.
+void add_plot_history_point(const std::string& plot_name,
+                            float x, float y,
+                            const std::string& label = "Данные",
+                            const ImVec4& color = BLUE, float size = 1.0f,
+                            size_t max_points = 2000);
+
+// Очистить всю накопленную историю графика (например, по кнопке Restart).
+void clear_plot_history(const std::string& plot_name);
+
+// Очистить только одну именованную серию.
+void clear_plot_history(const std::string& plot_name, const std::string& label);
 
 // Перегрузка для double-данных
 void add_plot_line(const std::string& plot_name,

@@ -7,7 +7,9 @@
 #include "implot_internal.h"
 #include <GLFW/glfw3.h>
 #include <map>
+#include <algorithm>
 #include <chrono>
+#include <iterator>
 #include <thread>
 #include <iostream>
 
@@ -281,6 +283,21 @@ bool gui_main_loop() {
                                     (int)pts.x_values.size());
             }
 
+            // Потоковые серии хранятся в кольцевом буфере. Параметр offset
+            // ImPlot начинает чтение с самой старой точки после заполнения.
+            for (auto& history : plot_data.historyVector) {
+                if (history.count == 0) continue;
+                ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle, history.size,
+                                           history.color, IMPLOT_AUTO, history.color);
+                int offset = history.count == history.x_values.size()
+                    ? static_cast<int>(history.next) : 0;
+                ImPlot::PlotScatter(history.label.c_str(),
+                                    history.x_values.data(),
+                                    history.y_values.data(),
+                                    static_cast<int>(history.count),
+                                    0, offset);
+            }
+
             // Одиночные точки
             for (auto& pt : plot_data.pointVector) {
                 ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle, pt.size,
@@ -525,6 +542,12 @@ void create_plot(const std::string& name, const Scale& scale, int width, int hei
     g_plots[name] = PlotData(scale, width, height);
 }
 
+void create_plot(const std::string& name,
+                 float x_min, float x_max, float y_min, float y_max,
+                 int width, int height) {
+    create_plot(name, Scale(x_min, x_max, y_min, y_max), width, height);
+}
+
 void set_plot_scale(const std::string& name, float x_min, float x_max, float y_min, float y_max) {
     auto it = g_plots.find(name);
     if (it != g_plots.end()) {
@@ -616,6 +639,69 @@ void add_plot_line(const std::string& plot_name,
     std::vector<float> xf(x.begin(), x.end());
     std::vector<float> yf(y.begin(), y.end());
     add_plot_line(plot_name, xf, yf, label, color, size);
+}
+
+void add_plot_history_point(const std::string& plot_name,
+                            float x, float y,
+                            const std::string& label,
+                            const ImVec4& color, float size,
+                            size_t max_points) {
+    auto plot_it = g_plots.find(plot_name);
+    if (plot_it == g_plots.end()) {
+        std::cerr << "[gui_library] Предупреждение: график '" << plot_name << "' не найден\n";
+        return;
+    }
+    if (max_points == 0) {
+        std::cerr << "[gui_library] Предупреждение: max_points должен быть больше нуля\n";
+        return;
+    }
+
+    auto& histories = plot_it->second.historyVector;
+    auto history_it = std::find_if(histories.begin(), histories.end(),
+        [&label](const PlotHistory& history) { return history.label == label; });
+
+    if (history_it == histories.end()) {
+        PlotHistory history;
+        history.label = label;
+        history.color = color;
+        history.size = size;
+        history.x_values.resize(max_points);
+        history.y_values.resize(max_points);
+        histories.push_back(std::move(history));
+        history_it = std::prev(histories.end());
+    }
+
+    PlotHistory& history = *history_it;
+    history.color = color;
+    history.size = size;
+    if (history.x_values.size() != max_points) {
+        // Изменение ёмкости начинает новую историю: это предсказуемее, чем
+        // частичное копирование кольцевого буфера с другой конфигурацией.
+        history.x_values.assign(max_points, 0.f);
+        history.y_values.assign(max_points, 0.f);
+        history.next = 0;
+        history.count = 0;
+    }
+
+    history.x_values[history.next] = x;
+    history.y_values[history.next] = y;
+    history.next = (history.next + 1) % max_points;
+    history.count = std::min(history.count + 1, max_points);
+}
+
+void clear_plot_history(const std::string& plot_name) {
+    auto it = g_plots.find(plot_name);
+    if (it != g_plots.end())
+        it->second.historyVector.clear();
+}
+
+void clear_plot_history(const std::string& plot_name, const std::string& label) {
+    auto it = g_plots.find(plot_name);
+    if (it == g_plots.end()) return;
+    auto& histories = it->second.historyVector;
+    histories.erase(std::remove_if(histories.begin(), histories.end(),
+        [&label](const PlotHistory& history) { return history.label == label; }),
+        histories.end());
 }
 
 void add_plot_heatmap(const std::string& plot_name,
