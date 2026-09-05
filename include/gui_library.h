@@ -52,7 +52,13 @@ enum class ParamType {
     Int,
     Bool,
     String,
-    Button
+    Button,
+    // Показания: рисуются текстом, редактировать нельзя. Отдельные типы, потому
+    // что «Время», «Пористость», «Момент импульса» – это выводы расчёта, а не
+    // ручки. Показанные через add_float_param, они выглядели полем ввода:
+    // ученик правил число, а следующий кадр молча его перезатирал.
+    OutputFloat,
+    OutputInt
 };
 
 // Одиночная точка на графике (размер маркера в пикселях)
@@ -144,6 +150,9 @@ struct PlotData {
     bool scale_dirty = false;
     int width  = 600;
     int height = 400;
+    // Подписи осей вместе с единицами: «t, с», «x, м». Пустые – ось без подписи.
+    std::string x_label;
+    std::string y_label;
 
     PlotData() = default;
     PlotData(const Scale& scale_, int w = 600, int h = 400)
@@ -204,6 +213,12 @@ void add_string_param(const std::string& name, const std::string& initial_value 
 
 void add_button_param(const std::string& name, std::function<void()> function);
 
+// Показание: то же самое, что add_float_param / add_int_param, но значение
+// только рисуется. Читается и пишется теми же get_float_param/set_float_param,
+// поэтому превратить ручку в показание – правка одного слова в add_*.
+void add_output_float(const std::string& name, float initial_value = 0.0f);
+void add_output_int(const std::string& name, int initial_value = 0);
+
 float       get_float_param(const std::string& name);
 void        set_float_param(const std::string& name, float value);
 int         get_int_param(const std::string& name);
@@ -225,6 +240,12 @@ void create_plot(const std::string& name, const Scale& scale,
 void create_plot(const std::string& name,
                  float x_min, float x_max, float y_min, float y_max,
                  int width = 600, int height = 400);
+
+// Подписать оси графика вместе с единицами: set_plot_axes("Маятник", "t, с", "x, м").
+// График без единиц на уроке физики читать нельзя, поэтому подписывать стоит всё.
+void set_plot_axes(const std::string& plot_name,
+                   const std::string& x_label,
+                   const std::string& y_label);
 
 // Обновить границы осей (применяется на следующем кадре)
 void set_plot_scale(const std::string& name,
@@ -290,6 +311,21 @@ void add_plot_heatmap(const std::string& plot_name,
 
 // Очистить все серии графика (вызывать каждый кадр перед добавлением новых данных)
 void clear_plot(const std::string& plot_name);
+
+// ============================================================
+// Экспорт данных
+// ============================================================
+
+// Сохранить накопленную историю графика (всё, что добавлено через
+// add_plot_history_point) в CSV: по строке на точку, колонки «серия, x, y».
+// Пустое имя файла – «<имя графика>.csv».
+//
+// Нативно файл пишется в текущий каталог, и путь печатается в консоль. В
+// браузере файловой системы нет, поэтому файл отдаётся на скачивание.
+//
+// У каждого графика есть кнопка «Сохранить CSV» – вызывать эту функцию из кода
+// задачи нужно только если сохранение должно случиться само, без нажатия.
+bool save_plot_csv(const std::string& plot_name, const std::string& filename = "");
 
 // ============================================================
 // Расчёт

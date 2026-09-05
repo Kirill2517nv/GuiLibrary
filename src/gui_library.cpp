@@ -12,6 +12,8 @@
 #include <iterator>
 #include <thread>
 #include <iostream>
+#include <fstream>
+#include <filesystem>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -218,6 +220,14 @@ bool gui_main_loop() {
                 if (ImGui::Button(param.label.c_str(), ImVec2(250, 50)))
                     param.function();
                 break;
+            // Показания рисуются текстом: поля ввода здесь нет, потому что
+            // править вывод расчёта бессмысленно – следующий кадр его перезапишет.
+            case ParamType::OutputFloat:
+                ImGui::LabelText(param.label.c_str(), "%.4g", std::get<float>(param.value));
+                break;
+            case ParamType::OutputInt:
+                ImGui::LabelText(param.label.c_str(), "%d", std::get<int>(param.value));
+                break;
         }
         ImGui::PopID();
     }
@@ -233,6 +243,15 @@ bool gui_main_loop() {
 
         bool has_heatmap = !plot_data.heatmapVector.empty();
 
+        // Кнопка экспорта. Стоит в самой библиотеке, а не в коде задачи: ученик,
+        // которому нужно унести числа в отчёт, не станет дописывать её сам.
+        // Показываем только когда есть что сохранять.
+        if (!plot_data.historyVector.empty()) {
+            if (ImGui::SmallButton("Сохранить CSV")) {
+                save_plot_csv(plot_name);
+            }
+        }
+
         ImGuiCond cond = ImGuiCond_FirstUseEver;
         if (plot_data.scale_dirty) {
             cond = ImGuiCond_Always;
@@ -242,6 +261,14 @@ bool gui_main_loop() {
                                   plot_data.scale.y_min, plot_data.scale.y_max, cond);
 
         if (ImPlot::BeginPlot(plot_name.c_str(), ImVec2((float)plot_data.width, (float)plot_data.height))) {
+
+            // Подписи осей. SetupAxes зовётся строго между BeginPlot и первой
+            // отрисовкой, иначе ImPlot её проигнорирует. nullptr – ось без
+            // подписи, поэтому пустая строка превращается именно в nullptr.
+            if (!plot_data.x_label.empty() || !plot_data.y_label.empty()) {
+                ImPlot::SetupAxes(plot_data.x_label.empty() ? nullptr : plot_data.x_label.c_str(),
+                                  plot_data.y_label.empty() ? nullptr : plot_data.y_label.c_str());
+            }
 
             // Тепловые карты — каждая со своей цветовой схемой
             for (auto& hm : plot_data.heatmapVector) {
@@ -494,9 +521,33 @@ void add_button_param(const std::string& name, std::function<void()> function) {
     g_DrawOrder.push_back(name);
 }
 
+// Показания. Отдельного набора get/set у них нет: значение читается и пишется
+// теми же get_float_param / set_float_param, что и у ручки, поэтому превратить
+// ручку в показание – правка одного слова в add_*, а не всего кода задачи.
+void add_output_float(const std::string& name, float initial_value) {
+    Parameter param;
+    param.name  = name;
+    param.label = name;
+    param.type  = ParamType::OutputFloat;
+    param.value = initial_value;
+    g_parameters[name] = param;
+    g_DrawOrder.push_back(name);
+}
+
+void add_output_int(const std::string& name, int initial_value) {
+    Parameter param;
+    param.name  = name;
+    param.label = name;
+    param.type  = ParamType::OutputInt;
+    param.value = initial_value;
+    g_parameters[name] = param;
+    g_DrawOrder.push_back(name);
+}
+
 float get_float_param(const std::string& name) {
     auto it = g_parameters.find(name);
-    if (it != g_parameters.end() && it->second.type == ParamType::Float)
+    if (it != g_parameters.end() &&
+        (it->second.type == ParamType::Float || it->second.type == ParamType::OutputFloat))
         return std::get<float>(it->second.value);
     std::cerr << "[gui_library] Предупреждение: параметр float '" << name << "' не найден\n";
     return 0.0f;
@@ -504,13 +555,15 @@ float get_float_param(const std::string& name) {
 
 void set_float_param(const std::string& name, float value) {
     auto it = g_parameters.find(name);
-    if (it != g_parameters.end() && it->second.type == ParamType::Float)
+    if (it != g_parameters.end() &&
+        (it->second.type == ParamType::Float || it->second.type == ParamType::OutputFloat))
         it->second.value = value;
 }
 
 int get_int_param(const std::string& name) {
     auto it = g_parameters.find(name);
-    if (it != g_parameters.end() && it->second.type == ParamType::Int)
+    if (it != g_parameters.end() &&
+        (it->second.type == ParamType::Int || it->second.type == ParamType::OutputInt))
         return std::get<int>(it->second.value);
     std::cerr << "[gui_library] Предупреждение: параметр int '" << name << "' не найден\n";
     return 0;
@@ -518,7 +571,8 @@ int get_int_param(const std::string& name) {
 
 void set_int_param(const std::string& name, int value) {
     auto it = g_parameters.find(name);
-    if (it != g_parameters.end() && it->second.type == ParamType::Int)
+    if (it != g_parameters.end() &&
+        (it->second.type == ParamType::Int || it->second.type == ParamType::OutputInt))
         it->second.value = value;
 }
 
@@ -573,6 +627,123 @@ void set_plot_scale(const std::string& name, float x_min, float x_max, float y_m
         it->second.scale.y_max  = y_max;
         it->second.scale_dirty  = true;
     }
+}
+
+// ============================================================
+// Экспорт данных
+// ============================================================
+
+// Экранирование поля CSV: кавычки удваиваются, всё поле берётся в кавычки.
+// Подпись серии – это формула вроде "y = A1*sin(w1*t) + A2*sin(w2*t)", в ней
+// может оказаться запятая, и без кавычек строка развалилась бы на две колонки.
+static std::string csv_field(const std::string& text) {
+    std::string out = "\"";
+    for (char c : text) {
+        if (c == '"') out += '"';
+        out += c;
+    }
+    out += '"';
+    return out;
+}
+
+static std::string csv_number(float value) {
+    char buf[32];
+    // %.9g – столько десятичных знаков, сколько нужно, чтобы float пережил
+    // запись и чтение без потери. Точка как разделитель: это стандарт CSV,
+    // Excel с русскими настройками откроет через «Данные – Из текста».
+    snprintf(buf, sizeof(buf), "%.9g", value);
+    return buf;
+}
+
+#ifdef __EMSCRIPTEN__
+// В браузере файловой системы нет: отдаём содержимое на скачивание. Blob и
+// временная ссылка – единственный способ, который не требует ни сервера, ни
+// разрешений. Ссылку освобождаем позже: если сделать это сразу, часть браузеров
+// не успевает начать скачивание.
+EM_JS(void, browser_download_text, (const char* name, const char* data, int len), {
+    var bytes = HEAPU8.slice(data, data + len);
+    var url = URL.createObjectURL(new Blob([bytes], { type: 'text/csv;charset=utf-8' }));
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = UTF8ToString(name);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+});
+#endif
+
+bool save_plot_csv(const std::string& plot_name, const std::string& filename) {
+    auto it = g_plots.find(plot_name);
+    if (it == g_plots.end()) {
+        std::cerr << "[gui_library] Предупреждение: график '" << plot_name << "' не найден\n";
+        return false;
+    }
+    const PlotData& plot = it->second;
+    if (plot.historyVector.empty()) {
+        std::cerr << "[gui_library] У графика '" << plot_name
+                  << "' нет накопленной истории: сохранять нечего. "
+                     "История появляется от add_plot_history_point.\n";
+        return false;
+    }
+
+    // BOM: без него Excel читает UTF-8 как системную кодировку, и русские
+    // подписи серий превращаются в мусор.
+    std::string csv = "\xEF\xBB\xBF" "серия,x,y\n";
+
+    for (const PlotHistory& history : plot.historyVector) {
+        if (history.count == 0) continue;
+        // Кольцевой буфер: пока он не заполнен, точки лежат подряд с нуля;
+        // после заполнения самая старая стоит на месте следующей записи.
+        const size_t capacity = history.x_values.size();
+        const size_t offset = (history.count == capacity) ? history.next : 0;
+        const std::string label = csv_field(history.label);
+        for (size_t i = 0; i < history.count; ++i) {
+            const size_t idx = (offset + i) % capacity;
+            csv += label;
+            csv += ',';
+            csv += csv_number(history.x_values[idx]);
+            csv += ',';
+            csv += csv_number(history.y_values[idx]);
+            csv += '\n';
+        }
+    }
+
+    const std::string name = filename.empty() ? plot_name + ".csv" : filename;
+
+#ifdef __EMSCRIPTEN__
+    browser_download_text(name.c_str(), csv.data(), (int)csv.size());
+    return true;
+#else
+    std::ofstream out(name, std::ios::binary);
+    if (!out) {
+        std::cerr << "[gui_library] Не удалось открыть файл '" << name << "' для записи\n";
+        return false;
+    }
+    out.write(csv.data(), (std::streamsize)csv.size());
+    if (!out) {
+        std::cerr << "[gui_library] Ошибка записи в '" << name << "'\n";
+        return false;
+    }
+    out.close();
+    // Путь печатаем целиком: иначе ученик не найдёт файл – рабочий каталог
+    // зависит от того, запущено из Visual Studio, из скрипта или двойным щелчком.
+    std::error_code ec;
+    const auto full = std::filesystem::absolute(name, ec);
+    std::cout << "[gui_library] Сохранено: " << (ec ? name : full.string()) << "\n";
+    return true;
+#endif
+}
+
+void set_plot_axes(const std::string& plot_name,
+                   const std::string& x_label, const std::string& y_label) {
+    auto it = g_plots.find(plot_name);
+    if (it == g_plots.end()) {
+        std::cerr << "[gui_library] Предупреждение: график '" << plot_name << "' не найден\n";
+        return;
+    }
+    it->second.x_label = x_label;
+    it->second.y_label = y_label;
 }
 
 void add_plot_disk(const std::string& plot_name, float x, float y, float radius,

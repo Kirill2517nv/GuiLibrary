@@ -135,3 +135,16 @@ endif()
 if(BUILD_NEWTASK)
     add_subdirectory(NewTask)
 endif()
+
+# ============================================================
+# Проверки
+# ============================================================
+# Не в WASM: тест пишет файл и печатает результат в консоль, ему нужен обычный
+# запуск. Собирается только по требованию, чтобы не удлинять сборку заданий.
+if(NOT EMSCRIPTEN)
+    option(BUILD_TESTS "Собирать проверки (tests/)" OFF)
+    if(BUILD_TESTS)
+        add_executable(test_csv tests/test_csv.cpp)
+        target_link_libraries(test_csv gui_library)
+    endif()
+endif()

@@ -55,10 +55,11 @@ int main() {
     add_float_param("Частота 1", 1.0f);
     add_float_param("Амплитуда 2", 1.0f);
     add_float_param("Частота 2", 1.0f);
-    add_float_param("Время", t);
+    add_output_float("Время", t);   // показание, а не ручка: его пишет расчёт
     add_bool_param("Пауза", false);
 
     create_plot("Колебания", 0.f, 200.f, -2.f, 2.f, 750, 475);
+    set_plot_axes("Колебания", "t, с", "y, м");
 
     set_calculation_function(calculation_function);
 
