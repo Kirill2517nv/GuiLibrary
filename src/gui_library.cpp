@@ -40,6 +40,130 @@ static EM_BOOL emscripten_wheel_cb(int /*eventType*/, const EmscriptenWheelEvent
 // публичном API библиотеки ему делать нечего.
 extern const char RobotoMedium_compressed_data_base85[];
 
+// ============================================================
+// Оформление
+// ============================================================
+//
+// Цвета взяты из тёмной темы сайта (templates/base.html, static/css/
+// design-tokens.css), чтобы симуляция в рамке на странице не выглядела чужой
+// программой, случайно вставленной в урок:
+//
+//     фон страницы   #0f172a   slate-900
+//     карточка       #1e293b   slate-800
+//     рамка          #334155   slate-700
+//     текст          #e2e8f0   slate-200, приглушённый #94a3b8 slate-400
+//     акцент         #2563eb   brand-600, светлее #3b82f6 brand-500
+//
+// Скругления и отступы – от готовых наборов Dear ImGui (github.com/
+// GraphicsProgramming/dear-imgui-styles), но умеренные: пульт с параметрами
+// плотный, и модные 11-пиксельные скругления съедают место, которого на
+// проекторе и так мало.
+static ImVec4 rgb(int r, int g, int b, float a = 1.0f) {
+    return ImVec4(r / 255.f, g / 255.f, b / 255.f, a);
+}
+
+static void apply_site_style() {
+    ImGuiStyle& style = ImGui::GetStyle();
+
+    style.WindowRounding    = 8.f;
+    style.ChildRounding     = 8.f;
+    style.FrameRounding     = 6.f;
+    style.PopupRounding     = 8.f;
+    style.ScrollbarRounding = 8.f;
+    style.GrabRounding      = 6.f;
+    style.TabRounding       = 6.f;
+
+    style.WindowBorderSize = 1.f;
+    style.FrameBorderSize  = 1.f;
+    style.PopupBorderSize  = 1.f;
+
+    style.WindowPadding    = ImVec2(12.f, 10.f);
+    style.FramePadding     = ImVec2(10.f, 6.f);
+    style.ItemSpacing      = ImVec2(8.f, 8.f);
+    style.ItemInnerSpacing = ImVec2(6.f, 6.f);
+    style.ScrollbarSize    = 12.f;
+    style.GrabMinSize      = 12.f;
+
+    ImVec4* c = style.Colors;
+    c[ImGuiCol_Text]                 = rgb(226, 232, 240);
+    c[ImGuiCol_TextDisabled]         = rgb(100, 116, 139);
+    c[ImGuiCol_WindowBg]             = rgb(30, 41, 59);
+    c[ImGuiCol_ChildBg]              = rgb(30, 41, 59);
+    c[ImGuiCol_PopupBg]              = rgb(30, 41, 59);
+    c[ImGuiCol_Border]               = rgb(51, 65, 85);
+    c[ImGuiCol_BorderShadow]         = ImVec4(0, 0, 0, 0);
+
+    c[ImGuiCol_FrameBg]              = rgb(15, 23, 42);
+    c[ImGuiCol_FrameBgHovered]       = rgb(51, 65, 85);
+    c[ImGuiCol_FrameBgActive]        = rgb(51, 65, 85);
+
+    c[ImGuiCol_TitleBg]              = rgb(15, 23, 42);
+    c[ImGuiCol_TitleBgActive]        = rgb(15, 23, 42);
+    c[ImGuiCol_TitleBgCollapsed]     = rgb(15, 23, 42, 0.75f);
+    c[ImGuiCol_MenuBarBg]            = rgb(15, 23, 42);
+
+    c[ImGuiCol_ScrollbarBg]          = rgb(15, 23, 42, 0.f);
+    c[ImGuiCol_ScrollbarGrab]        = rgb(51, 65, 85);
+    c[ImGuiCol_ScrollbarGrabHovered] = rgb(71, 85, 105);
+    c[ImGuiCol_ScrollbarGrabActive]  = rgb(100, 116, 139);
+
+    c[ImGuiCol_CheckMark]            = rgb(96, 165, 250);
+    c[ImGuiCol_SliderGrab]           = rgb(59, 130, 246);
+    c[ImGuiCol_SliderGrabActive]     = rgb(96, 165, 250);
+
+    c[ImGuiCol_Button]               = rgb(37, 99, 235);
+    c[ImGuiCol_ButtonHovered]        = rgb(59, 130, 246);
+    c[ImGuiCol_ButtonActive]         = rgb(29, 78, 216);
+
+    c[ImGuiCol_Header]               = rgb(37, 99, 235, 0.55f);
+    c[ImGuiCol_HeaderHovered]        = rgb(59, 130, 246, 0.70f);
+    c[ImGuiCol_HeaderActive]         = rgb(29, 78, 216);
+
+    c[ImGuiCol_Separator]            = rgb(51, 65, 85);
+    c[ImGuiCol_SeparatorHovered]     = rgb(59, 130, 246);
+    c[ImGuiCol_SeparatorActive]      = rgb(96, 165, 250);
+
+    c[ImGuiCol_ResizeGrip]           = rgb(51, 65, 85, 0.6f);
+    c[ImGuiCol_ResizeGripHovered]    = rgb(59, 130, 246, 0.8f);
+    c[ImGuiCol_ResizeGripActive]     = rgb(96, 165, 250);
+
+    // Вкладки: графики стоят вкладками рядом друг с другом, и активная должна
+    // читаться с проектора через весь кабинет – отсюда подчёркивание акцентом.
+    c[ImGuiCol_Tab]                  = rgb(15, 23, 42);
+    c[ImGuiCol_TabHovered]           = rgb(51, 65, 85);
+    c[ImGuiCol_TabSelected]          = rgb(30, 41, 59);
+    c[ImGuiCol_TabSelectedOverline]  = rgb(59, 130, 246);
+    c[ImGuiCol_TabDimmed]            = rgb(15, 23, 42);
+    c[ImGuiCol_TabDimmedSelected]    = rgb(30, 41, 59);
+
+    c[ImGuiCol_DockingPreview]       = rgb(37, 99, 235, 0.5f);
+    c[ImGuiCol_DockingEmptyBg]       = rgb(15, 23, 42);
+
+    c[ImGuiCol_TableHeaderBg]        = rgb(15, 23, 42);
+    c[ImGuiCol_TableBorderStrong]    = rgb(51, 65, 85);
+    c[ImGuiCol_TableBorderLight]     = rgb(51, 65, 85, 0.5f);
+    c[ImGuiCol_TableRowBg]           = ImVec4(0, 0, 0, 0);
+    c[ImGuiCol_TableRowBgAlt]        = rgb(255, 255, 255, 0.03f);
+
+    // ImPlot: область графика темнее панели, как холст на карточке. Сетка
+    // приглушена намеренно – линии данных должны быть заметнее разметки.
+    ImPlotStyle& plot = ImPlot::GetStyle();
+    plot.PlotBorderSize = 1.f;
+    plot.LineWeight     = 2.f;   // те же 2 пикселя, что у линий на графиках сайта
+
+    ImVec4* pc = plot.Colors;
+    pc[ImPlotCol_FrameBg]      = ImVec4(0, 0, 0, 0);
+    pc[ImPlotCol_PlotBg]       = rgb(15, 23, 42);
+    pc[ImPlotCol_PlotBorder]   = rgb(51, 65, 85);
+    pc[ImPlotCol_LegendBg]     = rgb(30, 41, 59, 0.94f);
+    pc[ImPlotCol_LegendBorder] = rgb(51, 65, 85);
+    pc[ImPlotCol_LegendText]   = rgb(203, 213, 225);
+    pc[ImPlotCol_AxisText]     = rgb(148, 163, 184);
+    pc[ImPlotCol_AxisGrid]     = rgb(51, 65, 85, 0.55f);
+    pc[ImPlotCol_AxisBg]       = ImVec4(0, 0, 0, 0);
+    pc[ImPlotCol_Crosshairs]   = rgb(148, 163, 184);
+}
+
 // Глобальные переменные
 static GLFWwindow* g_window = nullptr;
 static std::map<std::string, Parameter> g_parameters;
@@ -92,9 +216,13 @@ bool init_gui_library(const std::string& window_title, const int widthWindow, co
 #endif
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
-    ImGui::StyleColorsDark();
+    ImGui::StyleColorsDark();   // база: apply_site_style перекрывает её целиком
+    apply_site_style();
+
     ImGuiStyle& style = ImGui::GetStyle();
     if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+        // Окно, вытащенное за пределы главного, рисует ОС, и скруглённые углы
+        // с полупрозрачным фоном там выглядят обрезанными.
         style.WindowRounding = 0.0f;
         style.Colors[ImGuiCol_WindowBg].w = 1.0f;
     }

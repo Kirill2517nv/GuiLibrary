@@ -1,7 +1,26 @@
+// ============================================================
+// Задача 2. Математический маятник.
+//
+// Груз массой m на невесомом стержне длиной l. Уравнение движения:
+//
+//     dv/dt = -g * sin(alpha)        v – скорость груза по дуге
+//     d(alpha)/dt = v / l            alpha – угол отклонения
+//
+// Считаем в безразмерных величинах: m = l = g = 1. В численном эксперименте
+// стоит избегать очень больших и очень малых чисел, а три основные величины
+// (масса, длина, время) можно выбрать единичными.
+//
+// Схема – симплектический метод Эйлера: сначала угол по старой скорости,
+// затем скорость по силе в новой точке. Именно поэтому фазовая траектория
+// замкнута и не раскручивается по спирали, как вышло бы у явного Эйлера.
+//
+// Второе окно – фазовая диаграмма: состояние системы в координатах
+// «угол – скорость». Замкнутая линия означает периодическое движение.
+// ============================================================
+
 #include "gui_library.h"
 #include <vector>
 #include <cmath>
-#include <iostream>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -10,34 +29,40 @@
 int widhtWindow = 850;
 int hieghtWindow = 1200;
 
-float t = 0.0f;    // текущее глобальное время
+float t = 0.0f;    // текущее время
 float dt = 0.05f;  // шаг по времени
-int m = 1;
-int g = 1;
-int l = 1;
 
-bool pause;
+// Масса в уравнение движения не входит: она сокращается, и период маятника от
+// неё не зависит. Поэтому параметра «масса» здесь нет – он бы ни на что не
+// влиял. Масса понадобится, когда будете считать энергию: E = m*v^2/2 + m*g*h.
 
 float alpha = 0.0f;  // угол отклонения маятника
-float v = 1.f;       // скорость тела
+float v = 1.f;       // скорость груза по дуге
 
 void click_button() {
     t = 0;
     alpha = 0;
-    v = get_float_param("Velocity");
-    set_float_param("Time", t);
-    clear_plot_history("Phase diagram");
-    add_plot_history_point("Phase diagram", alpha, v,
-                           "Phase diagram", BLUE, 1.f, 2000);
+    v = get_float_param("Начальная скорость");
+    set_float_param("Время", t);
+    clear_plot_history("Фазовая диаграмма");
+    add_plot_history_point("Фазовая диаграмма", alpha, v,
+                           "Фазовая траектория", BLUE, 1.f, 2000);
 }
 
 void calculation_function() {
-    pause = get_bool_param("Pause");
-    if (pause) return;
+    if (get_bool_param("Пауза")) return;
+
+    // Длина и тяжесть – из пульта: без них не поставить ни «как меняется
+    // фазовая траектория при росте энергии», ни «постройте зависимость
+    // периода колебаний от амплитуды».
+    float l = get_float_param("Длина стержня l");
+    float g = get_float_param("Тяжесть g");
+    if (l <= 0.f) l = 1.f;   // деление на ноль: длина нулевой не бывает
 
     t += dt;
-    set_float_param("Time", t);
+    set_float_param("Время", t);
 
+    // Симплектический Эйлер, шаг первый: угол по старой скорости.
     alpha += v / l * dt;
     if (alpha >  M_PI) alpha -= 2.0f * (float)M_PI;
     if (alpha < -M_PI) alpha += 2.0f * (float)M_PI;
@@ -49,32 +74,46 @@ void calculation_function() {
     std::vector<float> mx = {0.0f, x_m};
     std::vector<float> my = {0.0f, y_m};
 
-    clear_plot("Pendulum");
-    add_plot_line("Pendulum", mx, my, "Pendulum", BLUE, 2.f);
-    add_plot_point("Pendulum", mx[1], my[1], "Pendulum", RED, 6.f);
+    clear_plot("Маятник");
+    add_plot_line("Маятник", mx, my, "Стержень", BLUE, 2.f);
+    add_plot_point("Маятник", mx[1], my[1], "Груз", RED, 6.f);
 
+    // Шаг второй: скорость по силе, посчитанной уже в новой точке.
     v += -g * sin(alpha) * dt;
 
-    clear_plot("Phase diagram");
-    add_plot_history_point("Phase diagram", alpha, v,
-                           "Phase diagram", BLUE, 1.f, 2000);
-    add_plot_point("Phase diagram", alpha, v, "Current state", RED, 6.f);
+    set_float_param("Угол alpha", alpha);
+    set_float_param("Скорость v", v);
+
+    clear_plot("Фазовая диаграмма");
+    add_plot_history_point("Фазовая диаграмма", alpha, v,
+                           "Фазовая траектория", BLUE, 1.f, 2000);
+    add_plot_point("Фазовая диаграмма", alpha, v, "Текущее состояние", RED, 6.f);
 }
 
 int main() {
-    if (!init_gui_library("Task_2: The movement of the pendulum", widhtWindow, hieghtWindow)) return -1;
+    if (!init_gui_library("Задача 2. Математический маятник", widhtWindow, hieghtWindow)) return -1;
 
-    add_bool_param("Pause", false);
-    add_button_param("Restart", click_button);
-    add_float_param("Velocity", v);
-    add_float_param("Time", t);
+    add_bool_param("Пауза", false);
+    add_button_param("Заново", click_button);
+    add_float_param("Начальная скорость", v);
+    add_float_param("Длина стержня l", 1.0f, 0.1f, 5.0f, 0.1f);
+    add_float_param("Тяжесть g", 1.0f, 0.1f, 20.0f, 0.1f);
+    add_output_float("Время", t);
+    add_output_float("Угол alpha", alpha);
+    add_output_float("Скорость v", v);
 
-    create_plot("Pendulum",      -1.1f, 1.1f, -1.1f, 1.1f, 500, 500);
-    create_plot("Phase diagram", -1.1f, 1.1f, -1.1f, 1.1f, 500, 500);
+    create_plot("Маятник",             -1.1f, 1.1f, -1.1f, 1.1f, 500, 500);
+    set_plot_axes("Маятник", "x, l", "y, l");
+
+    // По оси углов – весь диапазон -pi..pi, куда маятник и попадает; было
+    // -1.1..1.1, и при раскачке больше 63 градусов траектория уезжала за край.
+    // По скорости запас: у сепаратрисы (v = 2 при g = l = 1) она максимальна.
+    create_plot("Фазовая диаграмма",   -3.3f, 3.3f, -3.0f, 3.0f, 500, 500);
+    set_plot_axes("Фазовая диаграмма", "alpha, рад", "v, безразм.");
 
     // Начальная точка фазовой траектории до первого шага моделирования.
-    add_plot_history_point("Phase diagram", alpha, v,
-                           "Phase diagram", BLUE, 1.f, 2000);
+    add_plot_history_point("Фазовая диаграмма", alpha, v,
+                           "Фазовая траектория", BLUE, 1.f, 2000);
 
     set_calculation_function(calculation_function);
 

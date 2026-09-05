@@ -17,7 +17,6 @@
 #include <cmath>
 
 float t = 0.0f;    // текущее время
-float dt = 0.15f;  // шаг по времени
 
 // Обработчик кнопки: начать счёт заново
 void click_clear() {
@@ -30,7 +29,10 @@ void click_clear() {
 void calculation_function() {
     if (get_bool_param("Пауза")) return;
 
-    t += dt;
+    // Шаг по времени берём из пульта: задание «поставьте частоту 21, не меняя
+    // шага» держится именно на том, что шаг можно потом изменить и увидеть,
+    // как две пересекающиеся синусоиды превращаются в нормальный график.
+    t += get_float_param("Шаг по времени");
     set_float_param("Время", t);
 
     float A1 = get_float_param("Амплитуда 1");
@@ -55,6 +57,7 @@ int main() {
     add_float_param("Частота 1", 1.0f);
     add_float_param("Амплитуда 2", 1.0f);
     add_float_param("Частота 2", 1.0f);
+    add_float_param("Шаг по времени", 0.15f, 0.001f, 1.0f, 0.01f);
     add_output_float("Время", t);   // показание, а не ручка: его пишет расчёт
     add_bool_param("Пауза", false);
 

@@ -1,4 +1,23 @@
-﻿#include "gui_library.h"
+// ============================================================
+// Задача 3. Движение в центральном поле.
+//
+// Планета движется вокруг неподвижного тела в поле тяготения:
+//
+//     a = alpha / R^2,   alpha = G*M       R – расстояние до центра
+//     a_x = -x/R * a,    a_y = -y/R * a
+//
+// Считаем в безразмерных величинах: alpha = G*M = 1.
+//
+// Схема – симплектический метод Эйлера: сначала координата по старой скорости,
+// затем скорость по силе в новой точке. Именно поэтому орбита замкнута и не
+// раскручивается по спирали, как вышло бы у явного Эйлера.
+//
+// Что здесь намеренно НЕ сделано: графиков энергии, момента импульса и проверки
+// законов Кеплера в программе нет – это и есть задания к работе. Всё, что для
+// них нужно, вынесено в пульт: alpha, начальные координата и скорость.
+// ============================================================
+
+#include "gui_library.h"
 #include <cmath>
 
 int widhtWindow = 1200;
@@ -6,57 +25,73 @@ int hieghtWindow = 800;
 
 float dt = 0.02f;
 float R;
-float x_0 = 2.5f, y_0 = 0.0f;
-float x = x_0, y = y_0;
+float x, y;
 float v_x = 0.0f, v_y = 0.5f;
 float a_x, a_y;
 float a;
-float alpha = 1.f;
 
 void click_button() {
+    // Начальное положение и скорость – из пульта. Раньше они были зашиты в код
+    // (x_0 = 2.5), а задания требуют их менять: и первая космическая скорость,
+    // и вторая, и устойчивая пара «Земля – Луна» задаются именно отсюда.
+    x   = get_float_param("Начальный радиус x0");
+    y   = 0.0f;
     v_x = 0.0f;
-    v_y = get_float_param("Velocity");
-    x = x_0; y = y_0;
-    clear_plot_history("Gravity");
-    add_plot_history_point("Gravity", x, y, "Planet trajectory",
+    v_y = get_float_param("Начальная скорость Vy");
+
+    clear_plot_history("Гравитация");
+    add_plot_history_point("Гравитация", x, y, "Траектория планеты",
                            BLUE, 1.f, 20000);
 }
 
-void calculation_function(){
-    bool pause = get_bool_param("Pause");
-    if (pause) return;
+void calculation_function() {
+    if (get_bool_param("Пауза")) return;
 
+    // alpha = G*M – из пульта: без этого не поставить ни задачу про пару
+    // «Земля – Луна» с разными массами, ни сравнение орбит при разной тяжести.
+    float alpha = get_float_param("alpha = G*M");
+
+    // Симплектический Эйлер, шаг первый: координата по старой скорости.
     x += v_x * dt;
     y += v_y * dt;
 
     R = sqrt(x * x + y * y);
+    if (R < 1e-4f) R = 1e-4f;   // у самого центра ускорение обращается в бесконечность
 
     a = alpha / (R * R);
     a_x = -x / R * a;
     a_y = -y / R * a;
 
+    // Шаг второй: скорость по силе, посчитанной уже в новой точке.
     v_x += a_x * dt;
     v_y += a_y * dt;
 
-    clear_plot("Gravity");
-    add_plot_history_point("Gravity", x, y, "Planet trajectory",
+    set_float_param("Расстояние R", R);
+    set_float_param("Скорость v", sqrt(v_x * v_x + v_y * v_y));
+
+    clear_plot("Гравитация");
+    add_plot_history_point("Гравитация", x, y, "Траектория планеты",
                            BLUE, 1.f, 20000);
-    add_plot_point("Gravity", x, y, "Planet", RED, 8.0f);
-    add_plot_point("Gravity", 0, 0, "Sun", YELLOW, 13.0f);
+    add_plot_point("Гравитация", x, y, "Планета", RED, 8.0f);
+    add_plot_point("Гравитация", 0, 0, "Звезда", YELLOW, 13.0f);
 }
 
 int main() {
-    if (!init_gui_library("Task_3: Gravity", widhtWindow, hieghtWindow)) return -1;
+    if (!init_gui_library("Задача 3. Движение в центральном поле", widhtWindow, hieghtWindow)) return -1;
 
-    add_bool_param("Pause", false);
-    add_button_param("Restart", click_button);
-    add_float_param("Velocity", v_y);
+    add_bool_param("Пауза", false);
+    add_button_param("Заново", click_button);
+    add_float_param("Начальная скорость Vy", 0.5f, 0.0f, 3.0f, 0.01f);
+    add_float_param("Начальный радиус x0", 2.5f, 0.5f, 10.0f, 0.1f);
+    add_float_param("alpha = G*M", 1.0f, 0.1f, 5.0f, 0.1f);
+    add_output_float("Расстояние R", 0.f);
+    add_output_float("Скорость v", 0.f);
 
-    create_plot("Gravity", -3.f, 3.f, -3.f, 3.f, 700, 700);
+    create_plot("Гравитация", -3.f, 3.f, -3.f, 3.f, 700, 700);
+    set_plot_axes("Гравитация", "x, безразм.", "y, безразм.");
 
-    // Начальное положение планеты до первого шага моделирования.
-    add_plot_history_point("Gravity", x, y, "Planet trajectory",
-                           BLUE, 1.f, 20000);
+    // Начальное состояние до первого шага моделирования.
+    click_button();
 
     set_calculation_function(calculation_function);
     set_auto_layout();

@@ -37,7 +37,7 @@ const int TARGET_POINTS = 50;
 const float HIT_RADIUS = 0.15f;
 
 // Имя графика: используется и при создании, и при рисовании
-const char* PLOT = "Movement at an angle";
+const char* PLOT = "Полёт тела";
 
 // ------------------------------------------------------------
 // Мишень: набор точек. По этим же точкам мы её и рисуем, и проверяем попадание
@@ -107,10 +107,10 @@ bool touches_target(float body_x, float body_y) {
 // ------------------------------------------------------------
 
 void restart() {
-    V     = get_float_param("Velocity");
-    alpha = get_float_param("Angle");
-    x_0   = get_float_param("x_0");
-    y_0   = get_float_param("y_0");
+    V     = get_float_param("Начальная скорость");
+    alpha = get_float_param("Угол броска");
+    x_0   = get_float_param("Старт x");
+    y_0   = get_float_param("Старт y");
 
     t = 0.f;
     x = x_0;
@@ -121,9 +121,9 @@ void restart() {
 
     // стираем старую траекторию и ставим в начало точку старта
     clear_plot_history(PLOT);
-    add_plot_history_point(PLOT, x, y, "Trajectory", BLUE, 1.f, 2000);
+    add_plot_history_point(PLOT, x, y, "Траектория", BLUE, 1.f, 2000);
 
-    set_bool_param("Pause", false);
+    set_bool_param("Пауза", false);
 }
 
 // ------------------------------------------------------------
@@ -131,11 +131,11 @@ void restart() {
 // ------------------------------------------------------------
 
 void calculation_function() {
-    bool pause = get_bool_param("Pause");
+    bool pause = get_bool_param("Пауза");
 
     // считаем следующий шаг, только если тело летит и пауза не нажата
     if (flying && !pause) {
-        float dt = get_float_param("dt");
+        float dt = get_float_param("Шаг по времени");
 
         t += dt;
         x = x_0 + V * cos(radians(alpha)) * t;
@@ -153,7 +153,7 @@ void calculation_function() {
             flying = false;
         }
 
-        add_plot_history_point(PLOT, x, y, "Trajectory", BLUE, 1.f, 2000);
+        add_plot_history_point(PLOT, x, y, "Траектория", BLUE, 1.f, 2000);
     }
 
     // --- рисуем картину заново каждый кадр ---
@@ -161,17 +161,17 @@ void calculation_function() {
     clear_plot(PLOT);
 
     // земля
-    add_plot_line(PLOT, ground_x, ground_y, "Ground", GREEN, 1.f);
+    add_plot_line(PLOT, ground_x, ground_y, "Земля", GREEN, 1.f);
 
     // мишень — те же точки, по которым проверяем попадание
-    add_plot_line(PLOT, target_x, target_y, "Target", WHITE, 3.f);
+    add_plot_line(PLOT, target_x, target_y, "Мишень", WHITE, 3.f);
 
     // само тело
-    add_plot_point(PLOT, x, y, "Body", RED, 5.f);
+    add_plot_point(PLOT, x, y, "Тело", RED, 5.f);
 
     // отметка попадания
     if (hit)
-        add_plot_point(PLOT, x, y, "Hit!", YELLOW, 10.f);
+        add_plot_point(PLOT, x, y, "Попадание", YELLOW, 10.f);
 }
 
 // ------------------------------------------------------------
@@ -180,19 +180,20 @@ void calculation_function() {
 
 int main() {
     // окно приложения
-    if (!init_gui_library("Task_0: Movement at an angle", 1200, 800)) return -1;
+    if (!init_gui_library("Задача 0. Движение тела под углом к горизонту", 1200, 800)) return -1;
 
     // параметры: их видно слева и можно менять во время работы
-    add_bool_param("Pause", false);
-    add_button_param("Restart", restart);
-    add_float_param("Velocity", 8.0f);   // начальная скорость, м/с
-    add_float_param("Angle", 30.0f);     // угол броска, градусы
-    add_float_param("dt", 0.01f);        // шаг по времени, с
-    add_float_param("x_0", 0.0f);        // старт по горизонтали, м
-    add_float_param("y_0", 3.0f);        // старт по высоте, м
+    add_bool_param("Пауза", false);
+    add_button_param("Заново", restart);
+    add_float_param("Начальная скорость", 8.0f);   // начальная скорость, м/с
+    add_float_param("Угол броска", 30.0f);     // угол броска, градусы
+    add_float_param("Шаг по времени", 0.01f);        // шаг по времени, с
+    add_float_param("Старт x", 0.0f);        // старт по горизонтали, м
+    add_float_param("Старт y", 3.0f);        // старт по высоте, м
 
     // график: границы осей по X и Y, затем размер полотна в пикселях
     create_plot(PLOT, -0.1f, 11.f, -0.1f, 5.f, 800, 700);
+    set_plot_axes(PLOT, "x, м", "y, м");
 
     // готовим мишень и первый полёт
     make_target();

@@ -393,9 +393,13 @@ void calculation_function() {
         for (int i = 0; i < N_pts; i++) {
             float phi = 0.05f + 0.90f * i / (N_pts - 1); // φ от 0.05 до 0.95
             float c = 1.0f - phi;
-        
+
             phi_kc[i] = phi;
-            K_kc[i]   = kc_A * phi * phi / c;
+            // Козени–Карман: K = A · φ^3 / (1 - φ)^2.
+            // Было φ^2/(1 - φ): и степень пористости, и степень знаменателя
+            // не те. Кривая, с которой ученик сравнивает свои точки LBM, шла
+            // не так, и расхождение списывалось на численный метод.
+            K_kc[i]   = kc_A * phi * phi * phi / (c * c);
         }
 
         add_plot_line("K(phi)", phi_kc, K_kc,
