@@ -1,7 +1,0 @@
-add_executable(Task_4 main.cpp)
-set_target_properties(Task_4 PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(Task_4 gui_library)
-if(EMSCRIPTEN)
-    set_target_properties(Task_4 PROPERTIES OUTPUT_NAME "LBM")
-endif()
-configure_wasm_task(Task_4)

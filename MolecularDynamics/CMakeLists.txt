@@ -1,0 +1,4 @@
+add_executable(MolecularDynamics main.cpp)
+set_target_properties(MolecularDynamics PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(MolecularDynamics gui_library)
+configure_wasm_task(MolecularDynamics)

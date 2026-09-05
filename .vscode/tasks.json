@@ -12,7 +12,8 @@
                 "-DBUILD_TASK_1=ON",
                 "-DBUILD_TASK_2=OFF",
                 "-DBUILD_TASK_3=OFF",
-                "-DBUILD_NEWTASK=OFF"
+                "-DBUILD_LBM=OFF",
+                "-DBUILD_MOLDYN=OFF"
             ],
             "problemMatcher": []
         },

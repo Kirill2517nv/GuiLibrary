@@ -21,7 +21,7 @@ bash scripts/run.sh Task_1
 
 Если репозиторий уже клонирован без зависимостей, `bootstrap.sh` сам выполнит
 `git submodule update --init --recursive`. Для другой задачи передайте `Task_0`,
-`Task_2`, `Task_3`, `Task_4`, `NewTask` или `Template`.
+`Task_2`, `Task_3`, `LBM`, `MolecularDynamics` или `Template`.
 
 Для Debug-сборки:
 
@@ -98,7 +98,8 @@ src/gui_library.cpp     состояние GUI и реализация
 Task_0/main.cpp         движение тела под углом к горизонту
 Template/main.cpp       заготовка для своей задачи
 Task_1/main.cpp         основной учебный пример
-Task_4/main.cpp         LBM: течение в пористой среде (самое сложное)
+LBM/main.cpp            течение в пористой среде (самое сложное)
+MolecularDynamics/main.cpp  частицы Леннард-Джонса, фазовые переходы
 external/               Git-сабмодули GLFW, ImGui и ImPlot
 scripts/                сборка и запуск из терминала
 .vscode/                сборка и отладка из VS Code

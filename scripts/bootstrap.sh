@@ -42,16 +42,17 @@ cmake_args=(
     -DBUILD_TASK_1=OFF
     -DBUILD_TASK_2=OFF
     -DBUILD_TASK_3=OFF
-    -DBUILD_TASK_4=OFF
-    -DBUILD_NEWTASK=OFF
+    -DBUILD_LBM=OFF
+    -DBUILD_MOLDYN=OFF
 )
 
 case "$target" in
-    Task_0|Task_1|Task_2|Task_3|Task_4) cmake_args+=("-DBUILD_${target^^}=ON") ;;
-    NewTask)                            cmake_args+=("-DBUILD_NEWTASK=ON") ;;
-    Template)                           cmake_args+=("-DBUILD_TEMPLATE=ON") ;;
+    Task_0|Task_1|Task_2|Task_3)   cmake_args+=("-DBUILD_${target^^}=ON") ;;
+    LBM)                           cmake_args+=("-DBUILD_LBM=ON") ;;
+    MolecularDynamics)             cmake_args+=("-DBUILD_MOLDYN=ON") ;;
+    Template)                      cmake_args+=("-DBUILD_TEMPLATE=ON") ;;
     *)
-        echo "Ошибка: неизвестная цель '$target'. Используйте Task_0, Task_1, Task_2, Task_3, Task_4, NewTask или Template." >&2
+        echo "Ошибка: неизвестная цель '$target'. Используйте Task_0, Task_1, Task_2, Task_3, LBM, MolecularDynamics или Template." >&2
         exit 1
         ;;
 esac
