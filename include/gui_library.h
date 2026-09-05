@@ -1,216 +1,69 @@
 #pragma once
+//
+// Публичный интерфейс учебной библиотеки.
+//
+// Здесь только то, что нужно коду задачи: цвета, параметры пульта, графики,
+// экспорт и запуск. Внутренние структуры (PlotData, PlotHistory, Heatmap и
+// прочее) живут в src/gui_library.cpp – ученик, открывший «документацию», не
+// должен читать реализацию.
+//
+// Продвинутая разметка окон вынесена в gui_library_layout.h: она требует
+// понятий, которых на первых занятиях нет, а обычному заданию хватает
+// set_auto_layout().
+//
 #include "imgui.h"
+
+#include <functional>
 #include <string>
 #include <vector>
-#include <functional>
-#include <cmath>
-#include <variant>
 
-// Цвета серий.
+// ============================================================
+// Цвета серий
+// ============================================================
 //
-// Раньше здесь стояли чистые RGB: BLUE = (0,0,1), GREEN = (0,1,0). На тёмном
-// фоне графика чистый синий почти не виден, а чистый зелёный режет глаз. Имена
-// остались прежними – код задач не меняется, – а значения взяты из палитры
-// сайта и проверены на различимость: по всем парам, а не только по соседним,
-// сохраняется запас при протанопии и дейтеранопии (худшая пара – зелёный и
-// красный, ΔE 8.1) и при обычном зрении (худшая – жёлтый и красный, ΔE 19.8).
+// Раньше это были макросы с чистыми RGB: BLUE = (0,0,1), GREEN = (0,1,0). На
+// тёмном фоне графика чистый синий почти не виден, а чистый зелёный режет глаз.
+// Значения взяты из палитры сайта и проверены на различимость по всем парам, а
+// не только по соседним: при протанопии и дейтеранопии худшая пара сохраняет
+// запас ΔE 8.1, при обычном зрении – 19.8.
 //
 // Жёлтый светлее «полосы яркости», которую предписывает методика: тёмный
 // жёлтый – это коричневый, и он сливается с красным (ΔE падает до 11.8 даже
 // для обычного зрения). Из двух зол выбрано отклонение по яркости.
-#define BLUE   ImVec4(0.231f, 0.510f, 0.965f, 1.0f)  // brand-500 #3b82f6
-#define RED    ImVec4(0.937f, 0.267f, 0.267f, 1.0f)  // red-500   #ef4444
-#define YELLOW ImVec4(0.961f, 0.620f, 0.043f, 1.0f)  // amber-500 #f59e0b
-#define GREEN  ImVec4(0.063f, 0.725f, 0.506f, 1.0f)  // emerald-500 #10b981
-#define WHITE  ImVec4(0.945f, 0.961f, 0.976f, 1.0f)  // slate-100 #f1f5f9
-#define BLACK  ImVec4(0.059f, 0.090f, 0.165f, 1.0f)  // slate-900 #0f172a
-
-
-// Кольцевой буфер для потоковых данных в реальном времени
-class DataArray {
-public:
-    std::vector<float> x;
-    std::vector<float> y;
-    size_t maxSize;
-    size_t head;
-    float window;  // ширина скользящего окна по X (0 = абсолютное время)
-
-    DataArray(float windowWidth, size_t points = 200, float x_0 = 0.0f, float y_0 = 0.0f)
-        : maxSize(points), head(0), window(windowWidth)
-    {
-        x.resize(points, x_0);
-        y.resize(points, y_0);
-    }
-
-    void addPoint(float t, float value) {
-        head = (head + 1) % maxSize;
-        x[head] = window == 0.f ? t : fmod(t, window);
-        y[head] = value;
-    }
-
-    void fill_value(float x_value, float y_value) {
-        head = 0;
-        std::fill(x.begin(), x.end(), x_value);
-        std::fill(y.begin(), y.end(), y_value);
-    }
-
-    std::vector<float> getX() const { return x; }
-    std::vector<float> getY() const { return y; }
-};
-
-// Типы параметров UI
-enum class ParamType {
-    Float,
-    Int,
-    Bool,
-    String,
-    Button,
-    // Показания: рисуются текстом, редактировать нельзя. Отдельные типы, потому
-    // что «Время», «Пористость», «Момент импульса» – это выводы расчёта, а не
-    // ручки. Показанные через add_float_param, они выглядели полем ввода:
-    // ученик правил число, а следующий кадр молча его перезатирал.
-    OutputFloat,
-    OutputInt
-};
-
-// Одиночная точка на графике (размер маркера в пикселях)
-struct PlotPoint {
-    float x_value = 0.f;
-    float y_value = 0.f;
-    std::string label;
-    bool visible = true;
-    ImVec4 color;
-    float size = 1.f;
-};
-
-// Закрашенный круг с радиусом в координатах графика
-struct PlotDisk {
-    float x_value = 0.f;
-    float y_value = 0.f;
-    float radius  = 0.5f;  // в единицах оси X графика
-    std::string label;
-    bool visible = true;
-    ImVec4 color;
-};
-
-// Набор точек (scatter-серия)
-struct PlotPoints {
-    std::vector<float> x_values;
-    std::vector<float> y_values;
-    std::string label;
-    bool visible = true;
-    float size = 1.f;
-    ImVec4 color;
-};
-
-// Сплошная линия
-struct PlotLine {
-    std::vector<float> x_values;
-    std::vector<float> y_values;
-    std::string label;
-    bool visible = true;
-    ImVec4 color;
-    float size = 1.f;
-};
-
-// История одной потоковой величины. Хранится внутри графика, поэтому коду
-// учебной задачи не нужны собственные кольцевые буферы.
-struct PlotHistory {
-    std::vector<float> x_values;
-    std::vector<float> y_values;
-    std::string label;
-    ImVec4 color;
-    float size = 1.f;
-    size_t next = 0;
-    size_t count = 0;
-};
-
-// Тепловая карта
-struct Heatmap {
-    std::vector<float> values;      // данные row-major (rows * cols)
-    int rows = 0;
-    int cols = 0;
-    double scale_min = 0.0;         // 0 = авто
-    double scale_max = 0.0;         // 0 = авто
-    std::string label;
-    bool visible = true;
-    int colormap = 4;               // ImPlotColormap_Viridis
-    std::string label_fmt;          // пустая строка = без подписей ячеек
-};
-
-// Масштаб осей графика (без размера в пикселях — это не свойство шкалы)
-struct Scale {
-    float x_min;
-    float x_max;
-    float y_min;
-    float y_max;
-
-    Scale(float x_min = -1.f, float x_max = 1.f,
-          float y_min = -1.f, float y_max = 1.f)
-        : x_min(x_min), x_max(x_max), y_min(y_min), y_max(y_max) {}
-};
-
-// Данные одного графика
-struct PlotData {
-    std::vector<PlotPoint>  pointVector;
-    std::vector<PlotPoints> pointsVector;
-    std::vector<PlotLine>   lineVector;
-    std::vector<Heatmap>    heatmapVector;
-    std::vector<PlotDisk>   diskVector;
-    std::vector<PlotHistory> historyVector;
-    Scale scale;
-    bool scale_dirty = false;
-    int width  = 600;
-    int height = 400;
-    // Подписи осей вместе с единицами: «t, с», «x, м». Пустые – ось без подписи.
-    std::string x_label;
-    std::string y_label;
-
-    PlotData() = default;
-    PlotData(const Scale& scale_, int w = 600, int h = 400)
-        : scale(scale_), width(w), height(h) {}
-
-    void clear() {
-        pointVector.clear();
-        pointsVector.clear();
-        lineVector.clear();
-        heatmapVector.clear();
-        diskVector.clear();
-    }
-};
-
-// Параметр UI
-struct Parameter {
-    std::string name;
-    std::string label;
-    ParamType type;
-    std::variant<float, int, bool, std::string> value;
-    std::function<void()> function;  // только для Button
-    float min_value  = 0.0f;
-    float max_value  = 100.0f;
-    float step       = 1.0f;
-    bool  use_slider = false;
-};
+//
+// Константы, а не макросы: макрос с именем RED рано или поздно столкнётся с
+// чужим объявлением, и ошибка будет невразумительной.
+inline const ImVec4 BLUE   = ImVec4(0.231f, 0.510f, 0.965f, 1.0f);  // brand-500 #3b82f6
+inline const ImVec4 RED    = ImVec4(0.937f, 0.267f, 0.267f, 1.0f);  // red-500   #ef4444
+inline const ImVec4 YELLOW = ImVec4(0.961f, 0.620f, 0.043f, 1.0f);  // amber-500 #f59e0b
+inline const ImVec4 GREEN  = ImVec4(0.063f, 0.725f, 0.506f, 1.0f);  // emerald-500 #10b981
+inline const ImVec4 WHITE  = ImVec4(0.945f, 0.961f, 0.976f, 1.0f);  // slate-100 #f1f5f9
+inline const ImVec4 BLACK  = ImVec4(0.059f, 0.090f, 0.165f, 1.0f);  // slate-900 #0f172a
 
 // ============================================================
-// Инициализация / жизненный цикл
+// Инициализация и запуск
 // ============================================================
 
+// Создать окно. Вызывается первой; вернула false – дальше идти нельзя.
 bool init_gui_library(const std::string& window_title = "Численное моделирование",
                       int widthWindow = 1200, int heightWindow = 800);
 
-bool gui_main_loop();
-
-// Запускает главный цикл. Работает как в нативной, так и в WASM-сборке —
-// скрывает #ifdef __EMSCRIPTEN__ от кода задачи.
+// Запустить главный цикл. Работает и в нативной сборке, и в браузере –
+// разницу между ними библиотека прячет.
 void run_gui_library();
 
-void shutdown_gui_library();
+// Установить функцию, которую библиотека будет звать каждый кадр. Ваша функция
+// делает ОДИН шаг расчёта и заканчивается; повторит её библиотека сама.
+void set_calculation_function(std::function<void()> calc_func);
 
 // ============================================================
-// Параметры
+// Пульт: ручки и показания
 // ============================================================
+//
+// Имя параметра – это ключ, по которому его потом читают. Опечатка в имени не
+// ошибка компиляции: get_* вернёт ноль и напишет предупреждение.
 
+// Ручки – их крутит пользователь.
 void add_float_param(const std::string& name,
                      float initial_value = 0.0f, float min = 0.0f, float max = 100.0f,
                      float step = 0.2f, bool use_slider = false);
@@ -223,11 +76,13 @@ void add_bool_param(const std::string& name, bool initial_value = false);
 
 void add_string_param(const std::string& name, const std::string& initial_value = "");
 
+// Кнопка: по нажатию вызывает переданную функцию.
 void add_button_param(const std::string& name, std::function<void()> function);
 
-// Показание: то же самое, что add_float_param / add_int_param, но значение
-// только рисуется. Читается и пишется теми же get_float_param/set_float_param,
-// поэтому превратить ручку в показание – правка одного слова в add_*.
+// Показания – их пишет расчёт. Рисуются такой же рамкой, что и ручки, но
+// только для чтения: число можно выделить и скопировать, изменить нельзя.
+// Читаются и пишутся теми же get_/set_, что и ручки, поэтому превратить ручку
+// в показание – правка одного слова.
 void add_output_float(const std::string& name, float initial_value = 0.0f);
 void add_output_int(const std::string& name, int initial_value = 0);
 
@@ -244,143 +99,125 @@ void        set_string_param(const std::string& name, const std::string& value);
 // Графики
 // ============================================================
 
-// Создать новый график. width/height — начальный размер в пикселях (можно менять через слайдеры).
-void create_plot(const std::string& name, const Scale& scale,
-                 int width = 600, int height = 400);
-
-// Учебная перегрузка: позволяет задать границы без отдельного объекта Scale.
+// Создать график: границы осей, затем размер полотна в пикселях.
 void create_plot(const std::string& name,
                  float x_min, float x_max, float y_min, float y_max,
                  int width = 600, int height = 400);
 
-// Подписать оси графика вместе с единицами: set_plot_axes("Маятник", "t, с", "x, м").
+// Подписать оси вместе с единицами: set_plot_axes("Маятник", "t, с", "x, м").
 // График без единиц на уроке физики читать нельзя, поэтому подписывать стоит всё.
 void set_plot_axes(const std::string& plot_name,
-                   const std::string& x_label,
-                   const std::string& y_label);
+                   const std::string& x_label, const std::string& y_label);
 
-// Обновить границы осей (применяется на следующем кадре)
+// Обновить границы осей (применяется на следующем кадре).
 void set_plot_scale(const std::string& name,
                     float x_min, float x_max, float y_min, float y_max);
 
-// Нарисовать закрашенный круг с радиусом в координатах графика.
-// Если оси X и Y имеют разный масштаб — круг будет выглядеть как эллипс
-// (что физически корректно: форма объекта сохраняется в пространстве данных).
-void add_plot_disk(const std::string& plot_name, float x, float y, float radius,
-                   const std::string& label = "Данные",
-                   const ImVec4& color = BLACK);
+// ── Что рисуется каждый кадр заново ─────────────────────────
+//
+// Объекты кадра (точка, линия, набор точек, круг, тепловая карта) живут до
+// следующего вызова clear_plot. История – наоборот, копится сама.
 
-// Нарисовать одну точку
+// Одна точка.
 void add_plot_point(const std::string& plot_name, float x, float y,
-                    const std::string& label = "Данные",
-                    const ImVec4& color = BLACK, float size = 1.0f);
+                    const std::string& label = "Точка",
+                    const ImVec4& color = RED, float size = 4.0f);
 
-// Нарисовать набор точек (scatter)
+// Набор точек.
 void add_plot_points(const std::string& plot_name,
                      const std::vector<float>& x, const std::vector<float>& y,
                      const std::string& label = "Данные",
-                     const ImVec4& color = BLACK, float size = 1.0f);
+                     const ImVec4& color = BLUE, float size = 1.0f);
 
-// Перегрузка для double-данных
 void add_plot_points(const std::string& plot_name,
                      const std::vector<double>& x, const std::vector<double>& y,
                      const std::string& label = "Данные",
-                     const ImVec4& color = BLACK, float size = 1.0f);
+                     const ImVec4& color = BLUE, float size = 1.0f);
 
-// Нарисовать сплошную линию
+// Сплошная линия через заданные точки.
 void add_plot_line(const std::string& plot_name,
                    const std::vector<float>& x, const std::vector<float>& y,
                    const std::string& label = "Данные",
                    const ImVec4& color = BLUE, float size = 1.0f);
 
-// Добавить точку в историю именованной серии. Библиотека сама хранит не более
-// max_points последних значений и рисует их в хронологическом порядке.
+void add_plot_line(const std::string& plot_name,
+                   const std::vector<double>& x, const std::vector<double>& y,
+                   const std::string& label = "Данные",
+                   const ImVec4& color = BLUE, float size = 1.0f);
+
+// Закрашенный круг радиусом в координатах графика. Если масштабы осей разные,
+// круг выглядит эллипсом – это физически верно: форма сохраняется в координатах
+// данных, а не на экране.
+void add_plot_disk(const std::string& plot_name, float x, float y, float radius,
+                   const std::string& label = "Круг",
+                   const ImVec4& color = BLUE);
+
+// Тепловая карта: значения построчно, rows строк на cols столбцов.
+void add_plot_heatmap(const std::string& plot_name,
+                      const std::vector<float>& values,
+                      int rows, int cols,
+                      const std::string& label = "Тепловая карта",
+                      double scale_min = 0.0, double scale_max = 0.0,
+                      int colormap = 4,
+                      const std::string& label_fmt = "");
+
+// Очистить объекты текущего кадра. Историю не трогает.
+void clear_plot(const std::string& plot_name);
+
+// ── История: копится сама ───────────────────────────────────
+
+// Добавить точку в историю именованной серии. Библиотека хранит не более
+// max_points последних значений и рисует их в хронологическом порядке –
+// собственный кольцевой буфер коду задачи не нужен.
 void add_plot_history_point(const std::string& plot_name,
                             float x, float y,
                             const std::string& label = "Данные",
                             const ImVec4& color = BLUE, float size = 1.0f,
                             size_t max_points = 2000);
 
-// Очистить всю накопленную историю графика (например, по кнопке Restart).
+// Очистить всю накопленную историю графика (например, по кнопке «Заново»).
 void clear_plot_history(const std::string& plot_name);
 
 // Очистить только одну именованную серию.
 void clear_plot_history(const std::string& plot_name, const std::string& label);
 
-// Перегрузка для double-данных
-void add_plot_line(const std::string& plot_name,
-                   const std::vector<double>& x, const std::vector<double>& y,
-                   const std::string& label = "Данные",
-                   const ImVec4& color = BLUE, float size = 1.0f);
-
-void add_plot_heatmap(const std::string& plot_name,
-                      const std::vector<float>& values,
-                      int rows, int cols,
-                      const std::string& label    = "Heatmap",
-                      double scale_min = 0.0, double scale_max = 0.0,
-                      int colormap = 4,
-                      const std::string& label_fmt = "");
-
-// Очистить все серии графика (вызывать каждый кадр перед добавлением новых данных)
-void clear_plot(const std::string& plot_name);
-
 // ============================================================
 // Экспорт данных
 // ============================================================
 
-// Сохранить накопленную историю графика (всё, что добавлено через
-// add_plot_history_point) в CSV: по строке на точку, колонки «серия, x, y».
-// Пустое имя файла – «<имя графика>.csv».
+// Сохранить накопленную историю графика в CSV: по строке на точку, колонки
+// «серия, x, y». Пустое имя файла – «<имя графика>.csv».
 //
 // Нативно файл пишется в текущий каталог, и путь печатается в консоль. В
 // браузере файловой системы нет, поэтому файл отдаётся на скачивание.
 //
-// У каждого графика есть кнопка «Сохранить CSV» – вызывать эту функцию из кода
-// задачи нужно только если сохранение должно случиться само, без нажатия.
+// У каждого графика есть кнопка «Сохранить CSV» – звать эту функцию из кода
+// задачи нужно, только если сохранение должно случиться само, без нажатия.
 bool save_plot_csv(const std::string& plot_name, const std::string& filename = "");
 
 // ============================================================
-// Расчёт
+// Разметка окон
 // ============================================================
 
-// Установить функцию, вызываемую каждый кадр перед рендерингом UI
-void set_calculation_function(std::function<void()> calc_func);
-
-// ============================================================
-// Разметка окон (docking layout)
-// ============================================================
-
-// Автоматически расположить окна: Parameters слева (params_ratio от ширины),
-// все графики справа в виде вкладок.
-// В WASM: применяется при каждом запуске (браузер не сохраняет позиции).
-// В нативной версии: применяется только при первом запуске, пока нет imgui.ini.
+// Пульт слева (params_ratio от ширины), все графики справа вкладками.
+// Этого хватает почти всегда; полный контроль – в gui_library_layout.h.
 void set_auto_layout(float params_ratio = 0.25f);
-
-// Расширенный вариант: полный контроль над разметкой.
-// Callback получает ID корневого dockspace; внутри него используй layout_split_* и layout_dock().
-// Пример:
-//   set_default_layout([](ImGuiID id) {
-//       ImGuiID left, right;
-//       layout_split_left(id, 0.3f, &left, &right);
-//       layout_dock("Parameters", left);
-//       layout_dock("График",     right);
-//   });
-void set_default_layout(std::function<void(ImGuiID dockspace_id)> layout_fn);
-
-// ── Вспомогательные функции для использования внутри set_default_layout ──
-
-// Разбить узел вертикально: левая часть получает ratio*100% ширины
-void layout_split_left(ImGuiID node, float ratio, ImGuiID* out_left, ImGuiID* out_right);
-
-// Разбить узел горизонтально: верхняя часть получает ratio*100% высоты
-void layout_split_up(ImGuiID node, float ratio, ImGuiID* out_top, ImGuiID* out_bottom);
-
-// Поместить окно с именем name в узел node
-void layout_dock(const std::string& name, ImGuiID node);
 
 // ============================================================
 // Утилиты
 // ============================================================
 
-void   sleep_ms(int milliseconds);
+// Время в секундах с момента init_gui_library.
 double get_time();
+
+void sleep_ms(int milliseconds);
+
+// ============================================================
+// Служебное
+// ============================================================
+
+// Один кадр вручную. Нужна, только если вы пишете свой главный цикл вместо
+// run_gui_library. Возвращает false, когда окно закрыли.
+bool gui_main_loop();
+
+void shutdown_gui_library();

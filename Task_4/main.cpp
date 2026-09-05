@@ -1,4 +1,5 @@
 ﻿#include "gui_library.h"
+#include "gui_library_layout.h"
 #include <vector>
 #include <cmath>
 #include <algorithm>
@@ -445,20 +446,16 @@ int main() {
 
 
     // --- Индикаторы (перезаписываются каждый кадр) ---
-    add_float_param("Porosity",          1.0f, 0.0f, 1.0f,    0.01f, false);
-    add_float_param("Permeability", 0.0f, 0.0f, 10000.0f, 0.01f, false);
-    add_int_param("Iteration",           0,    0,    10000000, 1, false);
+    // Показания расчёта, а не ручки: их пишет set_*_param каждый кадр.
+    add_output_float("Porosity",    1.0f);
+    add_output_float("Permeability", 0.0f);
+    add_output_int("Iteration",      0);
 
     // --- Графики (масштаб обновляется при Restart под новый Nx/Ny) ---
-    Scale hm_scale(0.f, (float)Nx, 0.f, (float)Ny);
-    create_plot("Velocity field", hm_scale, 500, 400);  // 3 heatmap'а на одном полотне
-    create_plot("Density",        hm_scale, 500, 400);
-
-    Scale pois_scale(0.f, 40.f, 0.f, 0.01f);
-    create_plot("Poiseuille", pois_scale, 500, 400);
-
-    Scale kphi_scale(0.5f, 1.0f, 0.f, 20.0f);
-    create_plot("K(phi)", kphi_scale, 500, 400);
+    create_plot("Velocity field", 0.f, (float)Nx, 0.f, (float)Ny, 500, 400);  // 3 heatmap'а на одном полотне
+    create_plot("Density",        0.f, (float)Nx, 0.f, (float)Ny, 500, 400);
+    create_plot("Poiseuille",     0.f, 40.f,  0.f,  0.01f, 500, 400);
+    create_plot("K(phi)",         0.5f, 1.0f, 0.f, 20.0f,  500, 400);
 
     // --- Разметка (соответствует imgui.ini, применяется всегда в WASM) ---
     set_default_layout([](ImGuiID id) {

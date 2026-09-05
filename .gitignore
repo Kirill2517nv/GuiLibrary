@@ -89,6 +89,9 @@ Task_*/*.wasm
 NewTask/*.html
 NewTask/*.js
 NewTask/*.wasm
+Template/*.html
+Template/*.js
+Template/*.wasm
 
 # Презентации к задачам – локальные материалы преподавателя, в репозиторий не идут
 Presentations/

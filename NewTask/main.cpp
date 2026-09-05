@@ -1,4 +1,5 @@
 ﻿#include "gui_library.h"
+#include "gui_library_layout.h"
 #include <cmath>
 #include <vector>
 #include <cstdlib>
@@ -440,21 +441,25 @@ int main() {
     });
     add_button_param("Clear EOS", []() { eos_data.clear(); });
 
-    add_float_param("Time",    0.0f, 0.0f,  1e6f, 0.0f);
-    add_float_param("Density", 0.0f, 0.0f,  10.f, 0.0f);
-    add_float_param("T inst",  0.0f, -1e6f, 1e6f, 0.0f);
-    add_float_param("T avg",   0.0f, -1e6f, 1e6f, 0.0f);
-    add_float_param("P inst",  0.0f, -1e6f, 1e6f, 0.0f);
-    add_float_param("P avg",   0.0f, -1e6f, 1e6f, 0.0f);
-    add_float_param("E_kin",   0.0f, -1e6f, 1e6f, 0.0f);
-    add_float_param("U",       0.0f, -1e6f, 1e6f, 0.0f);
-    add_float_param("E_total", 0.0f, -1e6f, 1e6f, 0.0f);
+    // Показания расчёта. Раньше это были add_float_param с нулевым шагом:
+    // выглядело так же, но значение можно было исправить – и следующий кадр
+    // молча его затирал. add_output_float рисует ту же рамку, но только для
+    // чтения; set_float_param ниже работает с ними без изменений.
+    add_output_float("Time",    0.0f);
+    add_output_float("Density", 0.0f);
+    add_output_float("T inst",  0.0f);
+    add_output_float("T avg",   0.0f);
+    add_output_float("P inst",  0.0f);
+    add_output_float("P avg",   0.0f);
+    add_output_float("E_kin",   0.0f);
+    add_output_float("U",       0.0f);
+    add_output_float("E_total", 0.0f);
 
-    create_plot("Particles",   Scale(0.f,  15.f, 0.f,   15.f),  500, 500);
-    create_plot("Energy",      Scale(0.f,  5.f,  -100.f, 100.f), 500, 220);
-    create_plot("Temperature", Scale(0.f,  5.f,  0.f,    2.f),   500, 220);
-    create_plot("Pressure",    Scale(0.f,  5.f,  -2.f,   2.f),   500, 220);
-    create_plot("EOS",         Scale(0.f,  1.0f, -0.5f,  0.5f),  735, 350);
+    create_plot("Particles",   0.f, 15.f, 0.f,    15.f,  500, 500);
+    create_plot("Energy",      0.f,  5.f, -100.f, 100.f, 500, 220);
+    create_plot("Temperature", 0.f,  5.f, 0.f,      2.f, 500, 220);
+    create_plot("Pressure",    0.f,  5.f, -2.f,     2.f, 500, 220);
+    create_plot("EOS",         0.f,  1.0f, -0.5f,   0.5f, 735, 350);
 
     init_N_particles();
     set_calculation_function(calculation_function);

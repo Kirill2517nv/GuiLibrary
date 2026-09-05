@@ -116,6 +116,7 @@ option(BUILD_TASK_2  "Собирать Task_2 (Маятник)"           ON)
 option(BUILD_TASK_3  "Собирать Task_3 (Гравитация)"        ON)
 option(BUILD_TASK_4  "Собирать Task_4 (LBM)"               ON)
 option(BUILD_NEWTASK "Собирать NewTask (Молекулярная дин.)" ON)
+option(BUILD_TEMPLATE "Собирать Template (заготовка своей задачи)" ON)
 
 if(BUILD_TASK_0)
     add_subdirectory(Task_0)
@@ -134,6 +135,9 @@ if(BUILD_TASK_4)
 endif()
 if(BUILD_NEWTASK)
     add_subdirectory(NewTask)
+endif()
+if(BUILD_TEMPLATE)
+    add_subdirectory(Template)
 endif()
 
 # ============================================================

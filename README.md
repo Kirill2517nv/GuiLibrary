@@ -21,7 +21,7 @@ bash scripts/run.sh Task_1
 
 Если репозиторий уже клонирован без зависимостей, `bootstrap.sh` сам выполнит
 `git submodule update --init --recursive`. Для другой задачи передайте `Task_0`,
-`Task_2`, `Task_3`, `Task_4` или `NewTask`.
+`Task_2`, `Task_3`, `Task_4`, `NewTask` или `Template`.
 
 Для Debug-сборки:
 
@@ -76,9 +76,19 @@ int main() {
 
 `add_plot_history_point` хранит кольцевой буфер внутри графика. Функция
 `clear_plot_history` удаляет накопленную историю, а `set_plot_scale` меняет
-границы уже созданного графика. Старые `DataArray`, `Scale` и перегрузка
-`create_plot(name, scale, ...)` пока сохранены для совместимости со старыми
-учебными работами.
+границы уже созданного графика.
+
+Публичный заголовок содержит только то, что нужно коду задачи. Внутренние
+структуры (`PlotData`, `PlotHistory`, `Heatmap` и прочее) убраны в реализацию,
+мёртвый класс `DataArray` и тип `Scale` удалены. Продвинутая разметка окон –
+в отдельном `gui_library_layout.h`.
+
+## Как сделать своё задание
+
+Скопируйте папку `Template` под своим именем, замените в её `CMakeLists.txt`
+слово `Template` на новое имя и добавьте две строки в корневой `CMakeLists.txt`
+по образцу остальных заданий. Внутри `Template/main.cpp` лежит минимальный
+рабочий пример: одна величина, один график, кнопка «Заново».
 
 ## Структура
 
@@ -86,6 +96,7 @@ int main() {
 include/gui_library.h   публичный API
 src/gui_library.cpp     состояние GUI и реализация
 Task_0/main.cpp         движение тела под углом к горизонту
+Template/main.cpp       заготовка для своей задачи
 Task_1/main.cpp         основной учебный пример
 Task_4/main.cpp         LBM: течение в пористой среде (самое сложное)
 external/               Git-сабмодули GLFW, ImGui и ImPlot

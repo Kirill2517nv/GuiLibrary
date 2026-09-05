@@ -1,4 +1,5 @@
 ﻿#include "gui_library.h"
+#include "gui_library_layout.h"
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "imgui_impl_glfw.h"
@@ -13,6 +14,7 @@
 #include <thread>
 #include <iostream>
 #include <fstream>
+#include <variant>
 #include <filesystem>
 
 #ifdef __EMSCRIPTEN__
@@ -39,6 +41,148 @@ static EM_BOOL emscripten_wheel_cb(int /*eventType*/, const EmscriptenWheelEvent
 // Объявление здесь, а не в заголовке: массив нужен ровно одной функции, и в
 // публичном API библиотеки ему делать нечего.
 extern const char RobotoMedium_compressed_data_base85[];
+
+// ============================================================
+// Внутренние структуры
+// ============================================================
+//
+// Раньше они стояли в публичном заголовке, и ученик, открывший «документацию»,
+// первым делом видел реализацию: PlotPoint, Heatmap, PlotData, а также мёртвый
+// класс DataArray, который нигде не использовался. Теперь всё это здесь – в
+// единственном файле, которому оно нужно.
+
+enum class ParamType {
+    Float,
+    Int,
+    Bool,
+    String,
+    Button,
+    // Показания: рисуются рамкой только для чтения. Отдельные типы, потому что
+    // «Время», «Пористость», «Момент импульса» – это выводы расчёта, а не
+    // ручки. Показанные через add_float_param, они выглядели полем ввода:
+    // ученик правил значение, а следующий кадр молча его перезатирал.
+    OutputFloat,
+    OutputInt
+};
+
+// Одиночная точка на графике (размер маркера в пикселях)
+struct PlotPoint {
+    float x_value = 0.f;
+    float y_value = 0.f;
+    std::string label;
+    bool visible = true;
+    ImVec4 color;
+    float size = 1.f;
+};
+
+// Закрашенный круг с радиусом в координатах графика
+struct PlotDisk {
+    float x_value = 0.f;
+    float y_value = 0.f;
+    float radius  = 0.5f;
+    std::string label;
+    bool visible = true;
+    ImVec4 color;
+};
+
+// Набор точек (scatter-серия)
+struct PlotPoints {
+    std::vector<float> x_values;
+    std::vector<float> y_values;
+    std::string label;
+    bool visible = true;
+    float size = 1.f;
+    ImVec4 color;
+};
+
+// Сплошная линия
+struct PlotLine {
+    std::vector<float> x_values;
+    std::vector<float> y_values;
+    std::string label;
+    bool visible = true;
+    ImVec4 color;
+    float size = 1.f;
+};
+
+// История одной потоковой величины: кольцевой буфер внутри графика, поэтому
+// коду учебной задачи собственные буферы не нужны.
+struct PlotHistory {
+    std::vector<float> x_values;
+    std::vector<float> y_values;
+    std::string label;
+    ImVec4 color;
+    float size = 1.f;
+    size_t next = 0;
+    size_t count = 0;
+};
+
+// Тепловая карта
+struct Heatmap {
+    std::vector<float> values;      // данные построчно (rows * cols)
+    int rows = 0;
+    int cols = 0;
+    double scale_min = 0.0;         // 0 = авто
+    double scale_max = 0.0;         // 0 = авто
+    std::string label;
+    bool visible = true;
+    int colormap = 4;               // ImPlotColormap_Viridis
+    std::string label_fmt;          // пустая строка = без подписей ячеек
+};
+
+// Границы осей графика
+struct Scale {
+    float x_min;
+    float x_max;
+    float y_min;
+    float y_max;
+
+    Scale(float x_min = -1.f, float x_max = 1.f,
+          float y_min = -1.f, float y_max = 1.f)
+        : x_min(x_min), x_max(x_max), y_min(y_min), y_max(y_max) {}
+};
+
+// Данные одного графика
+struct PlotData {
+    std::vector<PlotPoint>   pointVector;
+    std::vector<PlotPoints>  pointsVector;
+    std::vector<PlotLine>    lineVector;
+    std::vector<Heatmap>     heatmapVector;
+    std::vector<PlotDisk>    diskVector;
+    std::vector<PlotHistory> historyVector;
+    Scale scale;
+    bool scale_dirty = false;
+    int width  = 600;
+    int height = 400;
+    // Подписи осей вместе с единицами: «t, с», «x, м». Пустые – ось без подписи.
+    std::string x_label;
+    std::string y_label;
+
+    PlotData() = default;
+    PlotData(const Scale& scale_, int w = 600, int h = 400)
+        : scale(scale_), width(w), height(h) {}
+
+    void clear() {
+        pointVector.clear();
+        pointsVector.clear();
+        lineVector.clear();
+        heatmapVector.clear();
+        diskVector.clear();
+    }
+};
+
+// Параметр пульта
+struct Parameter {
+    std::string name;
+    std::string label;
+    ParamType type;
+    std::variant<float, int, bool, std::string> value;
+    std::function<void()> function;  // только для кнопки
+    float min_value  = 0.0f;
+    float max_value  = 100.0f;
+    float step       = 1.0f;
+    bool  use_slider = false;
+};
 
 // ============================================================
 // Оформление
@@ -348,14 +492,35 @@ bool gui_main_loop() {
                 if (ImGui::Button(param.label.c_str(), ImVec2(250, 50)))
                     param.function();
                 break;
-            // Показания рисуются текстом: поля ввода здесь нет, потому что
-            // править вывод расчёта бессмысленно – следующий кадр его перезапишет.
+            // Показания.
+            //
+            // Рисуются такой же рамкой, как поля ввода, но с флагом ReadOnly:
+            // число видно, его можно выделить и скопировать в отчёт, а
+            // изменить нельзя. Шаг 0 убирает кнопки «плюс-минус» – без них
+            // поле и выглядит как показание прибора, а не как ручка.
+            //
+            // Прежде показания в задачах делали обычным add_float_param с
+            // нулевым шагом: выглядело так же, но значение было редактируемым,
+            // и правку молча затирал следующий кадр.
+            //
+            // Фон приглушён, чтобы показание отличалось от ручки не только
+            // поведением: на пульте из двадцати строк это единственное, что
+            // видно с проектора.
             case ParamType::OutputFloat:
-                ImGui::LabelText(param.label.c_str(), "%.4g", std::get<float>(param.value));
+            case ParamType::OutputInt: {
+                ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.f, 0.f, 0.f, 0.25f));
+                if (param.type == ParamType::OutputFloat) {
+                    float val = std::get<float>(param.value);
+                    ImGui::InputFloat(param.label.c_str(), &val, 0.f, 0.f, "%.4g",
+                                      ImGuiInputTextFlags_ReadOnly);
+                } else {
+                    int val = std::get<int>(param.value);
+                    ImGui::InputInt(param.label.c_str(), &val, 0, 0,
+                                    ImGuiInputTextFlags_ReadOnly);
+                }
+                ImGui::PopStyleColor();
                 break;
-            case ParamType::OutputInt:
-                ImGui::LabelText(param.label.c_str(), "%d", std::get<int>(param.value));
-                break;
+            }
         }
         ImGui::PopID();
     }
@@ -736,14 +901,15 @@ void set_string_param(const std::string& name, const std::string& value) {
 // Графики
 // ============================================================
 
-void create_plot(const std::string& name, const Scale& scale, int width, int height) {
+// Внутренняя перегрузка: Scale больше не публичный тип, но реализации удобно.
+static void create_plot_scaled(const std::string& name, const Scale& scale, int width, int height) {
     g_plots[name] = PlotData(scale, width, height);
 }
 
 void create_plot(const std::string& name,
                  float x_min, float x_max, float y_min, float y_max,
                  int width, int height) {
-    create_plot(name, Scale(x_min, x_max, y_min, y_max), width, height);
+    create_plot_scaled(name, Scale(x_min, x_max, y_min, y_max), width, height);
 }
 
 void set_plot_scale(const std::string& name, float x_min, float x_max, float y_min, float y_max) {
@@ -926,8 +1092,12 @@ void add_plot_points(const std::string& plot_name,
 void add_plot_points(const std::string& plot_name,
                      const std::vector<double>& x, const std::vector<double>& y,
                      const std::string& label, const ImVec4& color, float size) {
-    std::vector<float> xf(x.begin(), x.end());
-    std::vector<float> yf(y.begin(), y.end());
+    // Сужение double -> float здесь намеренное: графики хранят float.
+    // Явный static_cast вместо конструктора по диапазону – иначе MSVC на
+    // каждой сборке выдаёт C4244, и ученик привыкает не читать предупреждения.
+    std::vector<float> xf(x.size()), yf(y.size());
+    for (size_t i = 0; i < x.size(); ++i) xf[i] = static_cast<float>(x[i]);
+    for (size_t i = 0; i < y.size(); ++i) yf[i] = static_cast<float>(y[i]);
     add_plot_points(plot_name, xf, yf, label, color, size);
 }
 
@@ -951,8 +1121,12 @@ void add_plot_line(const std::string& plot_name,
 void add_plot_line(const std::string& plot_name,
                    const std::vector<double>& x, const std::vector<double>& y,
                    const std::string& label, const ImVec4& color, float size) {
-    std::vector<float> xf(x.begin(), x.end());
-    std::vector<float> yf(y.begin(), y.end());
+    // Сужение double -> float здесь намеренное: графики хранят float.
+    // Явный static_cast вместо конструктора по диапазону – иначе MSVC на
+    // каждой сборке выдаёт C4244, и ученик привыкает не читать предупреждения.
+    std::vector<float> xf(x.size()), yf(y.size());
+    for (size_t i = 0; i < x.size(); ++i) xf[i] = static_cast<float>(x[i]);
+    for (size_t i = 0; i < y.size(); ++i) yf[i] = static_cast<float>(y[i]);
     add_plot_line(plot_name, xf, yf, label, color, size);
 }
 
