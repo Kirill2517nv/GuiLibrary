@@ -33,6 +33,11 @@ static EM_BOOL emscripten_wheel_cb(int /*eventType*/, const EmscriptenWheelEvent
 #endif
 
 
+// Вшитый шрифт с кириллицей: определён в src/roboto_medium_font.cpp.
+// Объявление здесь, а не в заголовке: массив нужен ровно одной функции, и в
+// публичном API библиотеки ему делать нечего.
+extern const char RobotoMedium_compressed_data_base85[];
+
 // Глобальные переменные
 static GLFWwindow* g_window = nullptr;
 static std::map<std::string, Parameter> g_parameters;
@@ -92,9 +97,20 @@ bool init_gui_library(const std::string& window_title, const int widthWindow, co
         style.Colors[ImGuiCol_WindowBg].w = 1.0f;
     }
 
-    ImFontConfig font_cfg;
-    font_cfg.SizePixels = 20.0f;
-    io.Fonts->AddFontDefault(&font_cfg);
+    // Шрифт с кириллицей. AddFontDefault() ставит ProggyClean, у которого
+    // кириллических глифов нет вовсе – русские подписи выходили пустыми
+    // квадратами, поэтому все учебные задачи подписаны по-английски.
+    //
+    // Roboto-Medium вшит в библиотеку массивом (src/roboto_medium_font.cpp), а не
+    // читается с диска: путь к системному шрифту у Windows, Linux и macOS свой,
+    // а в WebAssembly файловой системы нет совсем. Вшитый массив одинаково
+    // работает на всех четырёх сборках.
+    //
+    // Диапазоны глифов не указываем: с версии 1.92 ImGui растеризует глиф по
+    // требованию (external/imgui/docs/FONTS.md, «specifying glyph ranges is
+    // unnecessary»), поэтому кириллица, знак градуса и тире берутся из шрифта
+    // сами, без списка диапазонов, который пришлось бы держать живым.
+    io.Fonts->AddFontFromMemoryCompressedBase85TTF(RobotoMedium_compressed_data_base85, 20.0f);
 
     ImGui_ImplGlfw_InitForOpenGL(g_window, true);
 #ifdef __EMSCRIPTEN__

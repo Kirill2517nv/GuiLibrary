@@ -4,6 +4,19 @@ project(GUI_Library)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Исходники читаются как UTF-8 на всех компиляторах.
+#
+# Вторая половина проблемы с кириллицей (первая – шрифт, см.
+# src/roboto_medium_font.cpp). GCC и Clang считают исходник UTF-8 по умолчанию, а
+# MSVC без этого флага – в системной кодировке: на русской Windows это cp1251, и
+# строка "Маятник" превращалась в мусор ещё до того, как её увидит ImGui.
+# Спасал только BOM, но он стоял лишь в половине файлов (в Task_0 и Task_1 его
+# нет). С флагом кодировка одна на все три компилятора, и BOM больше ни на что
+# не влияет.
+if(MSVC)
+    add_compile_options(/utf-8)
+endif()
+
 # 32-bit индексы для ImGui (нужно для Emscripten + docking, чтобы не переполнять 16-bit лимит)
 add_compile_definitions(ImDrawIdx=unsigned\ int)
 
@@ -72,6 +85,7 @@ endif()
 # ============================================================
 add_library(gui_library
     src/gui_library.cpp
+    src/roboto_medium_font.cpp
 )
 
 target_include_directories(gui_library PUBLIC

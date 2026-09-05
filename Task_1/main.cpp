@@ -1,49 +1,64 @@
+// ============================================================
+// Задача 1. Сложение колебаний.
+//
+// Складываем два гармонических колебания:
+//
+//     y(t) = A1 * sin(w1 * t) + A2 * sin(w2 * t)
+//
+// При близких, но не равных частотах видны биения – медленная огибающая,
+// на слух это пульсация громкости.
+//
+// Подписи здесь по-русски: библиотека рисует кириллицу с версии, где шрифт
+// вшит в неё (src/roboto_medium_font.cpp), а исходник читается как UTF-8 на
+// всех компиляторах (флаг /utf-8 для MSVC в корневом CMakeLists).
+// ============================================================
+
 #include "gui_library.h"
 #include <cmath>
 
-float t = 0.0f;    // текущее глобальное время
+float t = 0.0f;    // текущее время
 float dt = 0.15f;  // шаг по времени
-// функция обработки нажатия на кнопку (очистка графика)
+
+// Обработчик кнопки: начать счёт заново
 void click_clear() {
     t = 0;
-    set_float_param("Time", t);
-    clear_plot_history("Sin");
+    set_float_param("Время", t);
+    clear_plot_history("Колебания");
 }
 
-//основная вычислительная функция
-void calculation_function(){
-    bool pause = get_bool_param("Pause");
-    if (pause) return;
+// Основная вычислительная функция: вызывается каждый кадр
+void calculation_function() {
+    if (get_bool_param("Пауза")) return;
 
     t += dt;
-    set_float_param("Time", t);
+    set_float_param("Время", t);
 
-    float A1 = get_float_param("Amplitude 1");
-    float w1 = get_float_param("Frequency 1");
-    float A2 = get_float_param("Amplitude 2");
-    float w2 = get_float_param("Frequency 2");
+    float A1 = get_float_param("Амплитуда 1");
+    float w1 = get_float_param("Частота 1");
+    float A2 = get_float_param("Амплитуда 2");
+    float w2 = get_float_param("Частота 2");
 
     float y_t = A1 * sin(w1 * t) + A2 * sin(w2 * t);
 
-    clear_plot("Sin");
-    add_plot_history_point("Sin", t, y_t,
-                           "y = A1*sin(omega1*t) + A2*sin(omega2*t)",
+    clear_plot("Колебания");
+    add_plot_history_point("Колебания", t, y_t,
+                           "y = A1*sin(w1*t) + A2*sin(w2*t)",
                            BLUE, 1.0f, 20000);
-    add_plot_point("Sin", t, y_t, "Current value", RED, 5.0f);
+    add_plot_point("Колебания", t, y_t, "Текущее значение", RED, 5.0f);
 }
 
 int main() {
-    if (!init_gui_library("Task_1: The movement of the sin")) return -1;
+    if (!init_gui_library("Задача 1. Сложение колебаний")) return -1;
 
-    add_button_param("Restart", click_clear);
-    add_float_param("Amplitude 1", 1.0f);
-    add_float_param("Frequency 1", 1.0f);
-    add_float_param("Amplitude 2", 1.0f);
-    add_float_param("Frequency 2", 1.0f);
-    add_float_param("Time", t);
-    add_bool_param("Pause", false);
+    add_button_param("Заново", click_clear);
+    add_float_param("Амплитуда 1", 1.0f);
+    add_float_param("Частота 1", 1.0f);
+    add_float_param("Амплитуда 2", 1.0f);
+    add_float_param("Частота 2", 1.0f);
+    add_float_param("Время", t);
+    add_bool_param("Пауза", false);
 
-    create_plot("Sin", 0.f, 200.f, -2.f, 2.f, 750, 475);
+    create_plot("Колебания", 0.f, 200.f, -2.f, 2.f, 750, 475);
 
     set_calculation_function(calculation_function);
 
