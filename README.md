@@ -20,8 +20,8 @@ bash scripts/run.sh Task_1
 ```
 
 Если репозиторий уже клонирован без зависимостей, `bootstrap.sh` сам выполнит
-`git submodule update --init --recursive`. Для другой задачи передайте `Task_2`,
-`Task_3` или `NewTask`.
+`git submodule update --init --recursive`. Для другой задачи передайте `Task_0`,
+`Task_2`, `Task_3`, `Task_4` или `NewTask`.
 
 Для Debug-сборки:
 
@@ -85,7 +85,9 @@ int main() {
 ```text
 include/gui_library.h   публичный API
 src/gui_library.cpp     состояние GUI и реализация
+Task_0/main.cpp         движение тела под углом к горизонту
 Task_1/main.cpp         основной учебный пример
+Task_4/main.cpp         LBM: течение в пористой среде (самое сложное)
 external/               Git-сабмодули GLFW, ImGui и ImPlot
 scripts/                сборка и запуск из терминала
 .vscode/                сборка и отладка из VS Code

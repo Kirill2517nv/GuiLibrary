@@ -42,14 +42,15 @@ cmake_args=(
     -DBUILD_TASK_1=OFF
     -DBUILD_TASK_2=OFF
     -DBUILD_TASK_3=OFF
+    -DBUILD_TASK_4=OFF
     -DBUILD_NEWTASK=OFF
 )
 
 case "$target" in
-    Task_1|Task_2|Task_3) cmake_args+=("-DBUILD_${target^^}=ON") ;;
-    NewTask)              cmake_args+=("-DBUILD_NEWTASK=ON") ;;
+    Task_0|Task_1|Task_2|Task_3|Task_4) cmake_args+=("-DBUILD_${target^^}=ON") ;;
+    NewTask)                            cmake_args+=("-DBUILD_NEWTASK=ON") ;;
     *)
-        echo "Ошибка: неизвестная цель '$target'. Используйте Task_1, Task_2, Task_3 или NewTask." >&2
+        echo "Ошибка: неизвестная цель '$target'. Используйте Task_0, Task_1, Task_2, Task_3, Task_4 или NewTask." >&2
         exit 1
         ;;
 esac
