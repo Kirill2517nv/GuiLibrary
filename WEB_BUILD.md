@@ -6,7 +6,7 @@
 
 | Инструмент | Зачем нужен | Установка |
 |---|---|---|
-| **Emscripten SDK (emsdk)** | Компилятор C++ → WebAssembly | Уже установлен в `external/emsdk/` |
+| **Emscripten SDK (emsdk)** | Компилятор C++ → WebAssembly | В `external/emsdk/`, ставится вручную – см. ниже. В git не хранится |
 | **CMake 3.16+** | Система сборки | https://cmake.org |
 | **Ninja** | Генератор сборки (нужен для Emscripten) | `pip install ninja` |
 | **Python 3** | Нужен для emsdk и HTTP-сервера | https://python.org |
@@ -14,54 +14,51 @@
 > Нативные зависимости (Visual Studio, OpenGL SDK) для веб-сборки **не нужны**.
 > Emscripten предоставляет свои реализации GLFW и OpenGL ES.
 
-## Быстрый старт (Windows, cmd.exe)
+## Быстрый старт
 
 ### 1. Установка Emscripten (один раз)
 
-```bat
+```bash
 git clone https://github.com/emscripten-core/emsdk.git external/emsdk
-cd external\emsdk
+cd external/emsdk
 python emsdk.py install latest
 python emsdk.py activate latest
-cd ..\..
-
+cd ../..
 pip install ninja
 ```
 
-### 2. Конфигурация (один раз на директорию build-web)
+`external/emsdk/` в `.gitignore`: это чужой SDK на полтора гигабайта, в репозитории
+задач ему не место. У свежего клона его нет – ставить придётся.
 
-```bat
-external\emsdk\emsdk_env.bat
-external\emsdk\upstream\emscripten\emcmake.bat cmake -B build-web -S . -G Ninja
+### 2. Сборка
+
+```bash
+bash scripts/build-web.sh            # все задания
+bash scripts/build-web.sh Task_1     # одно
+BUILD_TYPE=Debug bash scripts/build-web.sh Task_1
 ```
 
-### 3. Сборка
+Собранное кладётся рядом с исходником: `Task_1/Task_1.{html,js,wasm}`.
 
-```bat
-REM Собрать одно задание:
-external\emsdk\upstream\emscripten\emmake.bat cmake --build build-web --target Task_2
+По умолчанию **Release** – это важно: с отладочной сборкой `.wasm` весит 1,4 МБ
+вместо 890 КБ, потому что тянет отладочную libc++ и проверки. Ученик ждёт
+загрузку вдвое дольше без всякой пользы.
 
-REM Собрать все задания:
-external\emsdk\upstream\emscripten\emmake.bat cmake --build build-web
-```
+Скрипт задаёт `EM_CONFIG` сам и не зовёт `emsdk_env.bat`. Тот запоминает
+абсолютный путь на момент `emsdk activate`, и после переноса папки падает с
+«Система не может найти указанный путь».
 
-Результат появляется рядом с исходниками задания:
-```
-Task_2/Task_2.html   ← открыть в браузере
-Task_2/Task_2.js     ← Emscripten JS runtime
-Task_2/Task_2.wasm   ← скомпилированный C++ код
-```
+### 3. Запуск локально
 
-### 4. Запуск
-
-```bat
-cd Task_2
+```bash
+cd Task_1
 python -m http.server 8080
-REM Открыть: http://localhost:8080/Task_2.html
+# открыть http://localhost:8080/Task_1.html
 ```
 
-> **Важно:** WASM нельзя открыть через `file://` — браузер блокирует это из соображений
-> безопасности. Нужен любой HTTP-сервер.
+> WASM нельзя открыть через `file://` – браузер это блокирует. Нужен HTTP-сервер.
+
+Выкладка на сайт спецкурса – `docs/spetskurs-deploy.md` в репозитории сайта.
 
 ## Добавление нового задания с поддержкой WASM
 
@@ -104,16 +101,6 @@ if(BUILD_TASK_N)
     add_subdirectory(Task_N)
 endif()
 ```
-
-## Деплой для студентов (GitHub Pages)
-
-```bash
-mkdir docs
-cp Task_2/Task_2.{html,js,wasm} docs/
-```
-В настройках репо → Settings → Pages → Source: `main` branch, `/docs` folder.
-
-Студенты открывают: `https://username.github.io/repo/Task_2.html`
 
 ## Архитектурные детали
 

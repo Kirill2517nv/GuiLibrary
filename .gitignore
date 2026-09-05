@@ -1,6 +1,5 @@
 # Build directories
-build/
-build-web/
+build*/
 out/
 .playwright-mcp/
 Debug/
