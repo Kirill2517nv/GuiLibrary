@@ -117,9 +117,15 @@ option(BUILD_TASK_3  "Собирать Task_3 (Гравитация)"        ON)
 option(BUILD_LBM     "Собирать LBM (течение в пористой среде)" ON)
 option(BUILD_MOLDYN  "Собирать MolecularDynamics"              ON)
 option(BUILD_TEMPLATE "Собирать Template (заготовка своей задачи)" ON)
+option(BUILD_TASK_0_MOVING "Собирать Task_0 с подвижной мишенью"  ON)
 
 if(BUILD_TASK_0)
     add_subdirectory(Task_0)
+endif()
+# Папки нет в свежем клоне – это готовый ответ к заданию, см. .gitignore.
+# Без EXISTS cmake падает на конфигурации.
+if(BUILD_TASK_0_MOVING AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/Task_0_moving)
+    add_subdirectory(Task_0_moving)
 endif()
 if(BUILD_TASK_1)
     add_subdirectory(Task_1)
