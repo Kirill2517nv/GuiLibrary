@@ -152,6 +152,10 @@ struct PlotData {
     std::vector<PlotHistory> historyVector;
     Scale scale;
     bool scale_dirty = false;
+    // Одинаковое число пикселей на единицу по обеим осям (ImPlotFlags_Equal).
+    bool equal_axes = false;
+    // Квадратное полотно: сторона по меньшему из доступных размеров окна.
+    bool square = false;
     int width  = 600;
     int height = 400;
     // Подписи осей вместе с единицами: «t, с», «x, м». Пустые – ось без подписи.
@@ -553,7 +557,25 @@ bool gui_main_loop() {
         ImPlot::SetNextAxesLimits(plot_data.scale.x_min, plot_data.scale.x_max,
                                   plot_data.scale.y_min, plot_data.scale.y_max, cond);
 
-        if (ImPlot::BeginPlot(plot_name.c_str(), ImVec2((float)plot_data.width, (float)plot_data.height))) {
+        ImPlotFlags plot_flags = plot_data.equal_axes ? ImPlotFlags_Equal : ImPlotFlags_None;
+
+        ImVec2 plot_size((float)plot_data.width, (float)plot_data.height);
+
+        // Квадратное полотно вписывается в то место, что осталось в окне, и
+        // центрируется по горизонтали. Порог в 80 px – на случай, когда окно
+        // сжали настолько, что квадрат вырождается: там лучше обычный график,
+        // чем пятно в углу.
+        if (plot_data.square) {
+            ImVec2 avail = ImGui::GetContentRegionAvail();
+            float side = avail.x < avail.y ? avail.x : avail.y;
+            if (side > 80.f) {
+                plot_size = ImVec2(side, side);
+                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail.x - side) / 2.f);
+                ImGui::SetCursorPosY(ImGui::GetCursorPosY() + (avail.y - side) / 2.f);
+            }
+        }
+
+        if (ImPlot::BeginPlot(plot_name.c_str(), plot_size, plot_flags)) {
 
             // Подписи осей. SetupAxes зовётся строго между BeginPlot и первой
             // отрисовкой, иначе ImPlot её проигнорирует. nullptr – ось без
@@ -680,11 +702,17 @@ bool gui_main_loop() {
             ImGui::EndGroup();
         }
 
-        ImGui::SetNextItemWidth(150.f);
-        ImGui::SliderInt("Width",  &plot_data.width,  100, 1600, "%d");
-        ImGui::SameLine();
-        ImGui::SetNextItemWidth(150.f);
-        ImGui::SliderInt("Height", &plot_data.height, 100, 1200, "%d");
+        // Ползунки размера – только когда размер задан в пикселях. При (-1, -1)
+        // полотно тянется за окном, и крутить в них нечего: они показывали бы
+        // «-1» и при первом же движении мышью ломали растяжение. Раньше их
+        // просто выталкивало за нижний край окна, и видно их не было.
+        if (plot_data.width > 0 && plot_data.height > 0) {
+            ImGui::SetNextItemWidth(150.f);
+            ImGui::SliderInt("Width",  &plot_data.width,  100, 1600, "%d");
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(150.f);
+            ImGui::SliderInt("Height", &plot_data.height, 100, 1200, "%d");
+        }
 
         ImGui::End();
     }
@@ -922,6 +950,16 @@ void create_plot(const std::string& name,
                  float x_min, float x_max, float y_min, float y_max,
                  int width, int height) {
     create_plot_scaled(name, Scale(x_min, x_max, y_min, y_max), width, height);
+}
+
+void set_plot_square(const std::string& name, bool square) {
+    auto it = g_plots.find(name);
+    if (it != g_plots.end()) it->second.square = square;
+}
+
+void set_plot_equal_axes(const std::string& name, bool equal) {
+    auto it = g_plots.find(name);
+    if (it != g_plots.end()) it->second.equal_axes = equal;
 }
 
 void set_plot_scale(const std::string& name, float x_min, float x_max, float y_min, float y_max) {
