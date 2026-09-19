@@ -1,0 +1,59 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "vs2022-x64",
+      "displayName": "Visual Studio 2022 (x64)",
+      "description": "Решение MSBuild: exe кладётся в Task_N/Debug или Task_N/Release, как при сборке из командной строки.",
+      "generator": "Visual Studio 17 2022",
+      "architecture": { "value": "x64", "strategy": "set" },
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "vs2026-x64",
+      "displayName": "Visual Studio 2026 (x64)",
+      "description": "То же самое для Visual Studio 2026. Версия генератора в CMake жёстко привязана к версии студии, одним пресетом обе не покрыть.",
+      "generator": "Visual Studio 18 2026",
+      "architecture": { "value": "x64", "strategy": "set" },
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "vs2022-debug",
+      "displayName": "Debug",
+      "description": "Генератор многоконфигурационный: Debug и Release выбираются на сборке, а не на конфигурации. Без пресетов сборки студия всегда собирала бы Debug.",
+      "configurePreset": "vs2022-x64",
+      "configuration": "Debug"
+    },
+    {
+      "name": "vs2022-release",
+      "displayName": "Release",
+      "configurePreset": "vs2022-x64",
+      "configuration": "Release"
+    },
+    {
+      "name": "vs2026-debug",
+      "displayName": "Debug",
+      "configurePreset": "vs2026-x64",
+      "configuration": "Debug"
+    },
+    {
+      "name": "vs2026-release",
+      "displayName": "Release",
+      "configurePreset": "vs2026-x64",
+      "configuration": "Release"
+    }
+  ]
+}
